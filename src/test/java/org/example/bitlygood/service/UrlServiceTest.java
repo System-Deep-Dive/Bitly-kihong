@@ -87,35 +87,126 @@ class UrlServiceTest {
     }
 
     @Test
-    @DisplayName("여러 URL을 순차적으로 생성할 때 고유한 카운터 값을 사용한다.")
-    void createMultipleShortUrls() {
+    @DisplayName("10개 이상의 URL을 등록하여 단축 코드가 올바르게 생성되는지 확인")
+    void createMultipleShortUrls_LargeScale() {
         // given
-        String originalUrl1 = "https://example1.com";
-        String originalUrl2 = "https://example2.com";
-        String originalUrl3 = "https://example3.com";
+        String[] originalUrls = {
+                "https://www.google.com",
+                "https://www.naver.com",
+                "https://www.daum.net",
+                "https://www.github.com",
+                "https://www.stackoverflow.com",
+                "https://www.youtube.com",
+                "https://www.facebook.com",
+                "https://www.twitter.com",
+                "https://www.instagram.com",
+                "https://www.linkedin.com",
+                "https://www.amazon.com",
+                "https://www.microsoft.com"
+        };
 
+        // Redis 카운터와 Base62 인코딩 모킹 설정 - 순차적으로 다른 값 반환
         when(redisCounterService.getNextCounter())
-                .thenReturn(1L)
-                .thenReturn(2L)
-                .thenReturn(3L);
-        when(base62.encode(1L)).thenReturn("1");
-        when(base62.encode(2L)).thenReturn("2");
-        when(base62.encode(3L)).thenReturn("3");
-        // save 메서드는 반환값을 테스트에서 사용하지 않으므로 when 설정 불필요
+                .thenReturn(1L).thenReturn(2L).thenReturn(3L).thenReturn(4L).thenReturn(5L)
+                .thenReturn(6L).thenReturn(7L).thenReturn(8L).thenReturn(9L).thenReturn(10L)
+                .thenReturn(11L).thenReturn(12L);
+
+        when(base62.encode(1L)).thenReturn("code1");
+        when(base62.encode(2L)).thenReturn("code2");
+        when(base62.encode(3L)).thenReturn("code3");
+        when(base62.encode(4L)).thenReturn("code4");
+        when(base62.encode(5L)).thenReturn("code5");
+        when(base62.encode(6L)).thenReturn("code6");
+        when(base62.encode(7L)).thenReturn("code7");
+        when(base62.encode(8L)).thenReturn("code8");
+        when(base62.encode(9L)).thenReturn("code9");
+        when(base62.encode(10L)).thenReturn("code10");
+        when(base62.encode(11L)).thenReturn("code11");
+        when(base62.encode(12L)).thenReturn("code12");
 
         // when
-        String shortCode1 = urlService.createShortUrl(originalUrl1);
-        String shortCode2 = urlService.createShortUrl(originalUrl2);
-        String shortCode3 = urlService.createShortUrl(originalUrl3);
+        String[] shortCodes = new String[originalUrls.length];
+        for (int i = 0; i < originalUrls.length; i++) {
+            shortCodes[i] = urlService.createShortUrl(originalUrls[i]);
+        }
 
         // then
-        assertEquals("1", shortCode1);
-        assertEquals("2", shortCode2);
-        assertEquals("3", shortCode3);
+        // 1. 모든 단축 코드가 생성되었는지 확인
+        assertEquals(originalUrls.length, shortCodes.length);
 
-        verify(redisCounterService, times(3)).getNextCounter();
-        verify(base62, times(1)).encode(1L);
-        verify(base62, times(1)).encode(2L);
-        verify(base62, times(1)).encode(3L);
+        // 2. 각 단축 코드가 올바르게 생성되었는지 확인
+        for (int i = 0; i < shortCodes.length; i++) {
+            assertEquals("code" + (i + 1), shortCodes[i]);
+        }
+
+        // 3. 모든 서비스가 올바른 횟수로 호출되었는지 확인
+        verify(redisCounterService, times(originalUrls.length)).getNextCounter();
+        verify(base62, times(originalUrls.length)).encode(anyLong());
+        verify(urlRepository, times(originalUrls.length)).save(any(Url.class));
+    }
+
+    @Test
+    @DisplayName("생성된 단축 코드에 중복이 없는지 검증")
+    void validateShortCodeUniqueness() {
+        // given
+        String[] originalUrls = {
+                "https://example1.com/page1",
+                "https://example2.com/page2",
+                "https://example3.com/page3",
+                "https://example4.com/page4",
+                "https://example5.com/page5",
+                "https://example6.com/page6",
+                "https://example7.com/page7",
+                "https://example8.com/page8",
+                "https://example9.com/page9",
+                "https://example10.com/page10",
+                "https://example11.com/page11",
+                "https://example12.com/page12"
+        };
+
+        // Redis 카운터와 Base62 인코딩 모킹 설정 (고유한 값들)
+        when(redisCounterService.getNextCounter())
+                .thenReturn(1L).thenReturn(2L).thenReturn(3L).thenReturn(4L).thenReturn(5L)
+                .thenReturn(6L).thenReturn(7L).thenReturn(8L).thenReturn(9L).thenReturn(10L)
+                .thenReturn(11L).thenReturn(12L);
+
+        when(base62.encode(1L)).thenReturn("code1");
+        when(base62.encode(2L)).thenReturn("code2");
+        when(base62.encode(3L)).thenReturn("code3");
+        when(base62.encode(4L)).thenReturn("code4");
+        when(base62.encode(5L)).thenReturn("code5");
+        when(base62.encode(6L)).thenReturn("code6");
+        when(base62.encode(7L)).thenReturn("code7");
+        when(base62.encode(8L)).thenReturn("code8");
+        when(base62.encode(9L)).thenReturn("code9");
+        when(base62.encode(10L)).thenReturn("code10");
+        when(base62.encode(11L)).thenReturn("code11");
+        when(base62.encode(12L)).thenReturn("code12");
+
+        // when
+        String[] shortCodes = new String[originalUrls.length];
+        for (int i = 0; i < originalUrls.length; i++) {
+            shortCodes[i] = urlService.createShortUrl(originalUrls[i]);
+        }
+
+        // then
+        // 1. 모든 단축 코드가 고유한지 확인 (중복 검증)
+        for (int i = 0; i < shortCodes.length; i++) {
+            for (int j = i + 1; j < shortCodes.length; j++) {
+                assertNotEquals(shortCodes[i], shortCodes[j],
+                        String.format("Short codes should be unique. Found duplicate: %s at positions %d and %d",
+                                shortCodes[i], i, j));
+            }
+        }
+
+        // 2. 각 단축 코드가 예상된 값인지 확인
+        for (int i = 0; i < shortCodes.length; i++) {
+            assertEquals("code" + (i + 1), shortCodes[i]);
+        }
+
+        // 3. 모든 서비스가 올바른 횟수로 호출되었는지 확인
+        verify(redisCounterService, times(originalUrls.length)).getNextCounter();
+        verify(base62, times(originalUrls.length)).encode(anyLong());
+        verify(urlRepository, times(originalUrls.length)).save(any(Url.class));
     }
 }
