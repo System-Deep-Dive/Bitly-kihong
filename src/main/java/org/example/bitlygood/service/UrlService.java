@@ -71,7 +71,11 @@ public class UrlService {
      */
     @Transactional
     public String createShortUrl(String originalUrl) {
-        log.info("Creating short URL for: {}", originalUrl);
+        if (originalUrl == null || originalUrl.isBlank()) {
+            throw new IllegalArgumentException("Invalid original url");
+        }
+        originalUrl = originalUrl.trim();
+        log.debug("Creating short URL");
 
         // 1단계: Redis에서 원자적으로 카운터 값을 증가시켜 고유한 ID 획득
         // INCR 명령은 원자적이므로 동시 요청이 와도 중복되지 않는 값을 보장
@@ -81,7 +85,7 @@ public class UrlService {
         // 2단계: 카운터 값을 Base62로 인코딩하여 단축 코드 생성
         // 숫자를 짧고 URL-safe한 문자열로 변환 (예: 12345678 -> "1A2B3C")
         String shortCode = base62.encode(counter);
-        log.debug("Generated short code: {}", shortCode);
+        log.debug("Generated short code");
 
         // 3단계: URL 엔티티 생성 및 데이터베이스에 저장
         // 단축 코드와 원본 URL의 매핑 정보를 영구 저장
@@ -89,7 +93,7 @@ public class UrlService {
         url.setShortUrl(shortCode);
         urlRepository.save(url);
 
-        log.info("Successfully created short URL: {} -> {}", shortCode, originalUrl);
+        log.info("Short URL created");
         return shortCode;
     }
 
