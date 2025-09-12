@@ -34,11 +34,19 @@ public class RedisCounterService {
      * - 키가 존재하지 않으면 0에서 시작하여 1을 반환
      * - 여러 서버에서 동시 호출해도 중복되지 않는 고유한 값 보장
      * 
+     * NPE (NullPointerException)가 발생할 수 있는 상황:
+     * - 내부적으로 Redis에 예기치 않은 문제가 생기거나, 직렬화 오류 등으로 인해 값이 정상적으로 반환되지 않는 경우 NULL 발생.
+     * - 이후 반환값(Long next)이 null인 상태에서 long 기본형으로 반환하려 하거나 후속 연산에
+     * 사용하면 NPE(NullPointerException) 가 발생합니다.
+     * 
      * @return 증가된 카운터 값 (최초 호출 시 1, 이후 순차적으로 증가)
      */
     public long getNextCounter() {
-        // Redis INCR 명령 실행: 원자적으로 카운터 값을 증가시키고 반환
-        return redisTemplate.opsForValue().increment(COUNTER_KEY);
+        Long next = redisTemplate.opsForValue().increment(COUNTER_KEY);
+        if (next == null) {
+            throw new IllegalStateException("Redis INCR returned null for key: " + COUNTER_KEY);
+        }
+        return next;
     }
 
     /**
