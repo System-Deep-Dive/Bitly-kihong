@@ -20,6 +20,9 @@ public class Base62 {
      * @return Base62로 인코딩된 문자열
      */
     public String encode(long value) {
+        if (value < 0) {
+            throw new IllegalArgumentException("value must be >= 0");
+        }
         // 0에 대한 특별 처리: Base62에서 0은 "0"으로 표현
         if (value == 0) {
             return "0";
