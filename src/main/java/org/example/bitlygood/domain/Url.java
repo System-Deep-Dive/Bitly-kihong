@@ -21,6 +21,7 @@ public class Url {
     @Column(nullable = false)
     private String originalUrl;
 
+    @Column(nullable = false, unique = true)
     private String shortUrl;
 
     public Url(String originalUrl) {
