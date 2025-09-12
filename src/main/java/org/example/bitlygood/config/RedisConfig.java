@@ -2,6 +2,7 @@ package org.example.bitlygood.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
@@ -46,6 +47,7 @@ public class RedisConfig {
      * @param connectionFactory Redis 연결 팩토리 (application.properties에서 자동 주입)
      * @return 구성된 RedisTemplate (String 타입 키/값 전용)
      */
+    @Primary
     @Bean
     public RedisTemplate<String, String> redisTemplate(RedisConnectionFactory connectionFactory) {
         // RedisTemplate 인스턴스 생성 (키와 값 모두 String 타입)
