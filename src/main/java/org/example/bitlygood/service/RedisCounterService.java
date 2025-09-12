@@ -62,11 +62,14 @@ public class RedisCounterService {
      * @return 현재 카운터 값 (카운터가 설정되지 않은 경우 0)
      */
     public long getCurrentCounter() {
-        // Redis에서 카운터 값 조회 (문자열로 반환됨)
         String value = redisTemplate.opsForValue().get(COUNTER_KEY);
-
-        // null 체크: 키가 존재하지 않으면 0 반환, 존재하면 숫자로 변환하여 반환
-        return value != null ? Long.parseLong(value) : 0;
+        if (value == null)
+            return 0;
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException ex) {
+            throw new IllegalStateException("Counter value is not numeric: " + value, ex);
+        }
     }
 
     /**
