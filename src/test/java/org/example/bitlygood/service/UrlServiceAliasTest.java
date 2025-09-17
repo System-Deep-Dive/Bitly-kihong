@@ -13,7 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.time.LocalDateTime;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,6 +35,9 @@ class UrlServiceAliasTest {
 
     @Mock
     private RedisCounterService redisCounterService;
+
+    @Mock
+    private UrlCacheService urlCacheService;
 
     @InjectMocks
     private UrlService urlService;
@@ -213,15 +216,12 @@ class UrlServiceAliasTest {
     void getOriginalUrl_ExpiredUrl_ThrowsException() {
         // given
         String shortCode = "myalias";
-        Url expiredUrl = new Url("https://www.example.com", LocalDateTime.now().minusDays(1));
-        expiredUrl.setShortUrl(shortCode);
-
-        when(urlRepository.findByShortUrl(shortCode)).thenReturn(java.util.Optional.of(expiredUrl));
+        when(urlCacheService.getOriginalUrl(shortCode)).thenReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> urlService.getOriginalUrl(shortCode))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("URL has expired");
+                .hasMessage("Invalid short url");
     }
 
     @Test
@@ -230,10 +230,7 @@ class UrlServiceAliasTest {
         // given
         String shortCode = "myalias";
         String originalUrl = "https://www.example.com";
-        Url url = new Url(originalUrl, null);
-        url.setShortUrl(shortCode);
-
-        when(urlRepository.findByShortUrl(shortCode)).thenReturn(java.util.Optional.of(url));
+        when(urlCacheService.getOriginalUrl(shortCode)).thenReturn(Optional.of(originalUrl));
 
         // when
         String result = urlService.getOriginalUrl(shortCode);

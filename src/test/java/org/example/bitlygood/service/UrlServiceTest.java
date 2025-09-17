@@ -27,6 +27,9 @@ class UrlServiceTest {
     @Mock
     private RedisCounterService redisCounterService;
 
+    @Mock
+    private UrlCacheService urlCacheService;
+
     @InjectMocks
     private UrlService urlService;
 
@@ -57,17 +60,15 @@ class UrlServiceTest {
         // given
         String shortCode = "1";
         String originalUrl = "https://example.com";
-        Url url = new Url(originalUrl);
-        url.setShortUrl(shortCode);
 
-        when(urlRepository.findByShortUrl(shortCode)).thenReturn(Optional.of(url));
+        when(urlCacheService.getOriginalUrl(shortCode)).thenReturn(Optional.of(originalUrl));
 
         // when
         String result = urlService.getOriginalUrl(shortCode);
 
         // then
         assertEquals(originalUrl, result);
-        verify(urlRepository, times(1)).findByShortUrl(shortCode);
+        verify(urlCacheService, times(1)).getOriginalUrl(shortCode);
     }
 
     @Test
@@ -75,7 +76,7 @@ class UrlServiceTest {
     void getOriginalUrl_NotFound() {
         // given
         String shortCode = "nonexistent";
-        when(urlRepository.findByShortUrl(shortCode)).thenReturn(Optional.empty());
+        when(urlCacheService.getOriginalUrl(shortCode)).thenReturn(Optional.empty());
 
         // when & then
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
@@ -83,7 +84,7 @@ class UrlServiceTest {
         });
 
         assertEquals("Invalid short url", exception.getMessage());
-        verify(urlRepository, times(1)).findByShortUrl(shortCode);
+        verify(urlCacheService, times(1)).getOriginalUrl(shortCode);
     }
 
     @Test
