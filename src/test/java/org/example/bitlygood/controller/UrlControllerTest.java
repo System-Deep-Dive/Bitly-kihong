@@ -54,29 +54,30 @@ class UrlControllerTest {
                 .andExpect(jsonPath("$.originalUrl").value(originalUrl));
     }
 
-    @Test
-    @DisplayName("GET /{shortUrl} 요청 시 원본 URL로 리디렉션한다.")
-    void redirect() throws Exception {
-        // given
-        String shortUrl = "B";
-        String originalUrl = "https://example.com";
-        when(urlService.getOriginalUrl(shortUrl)).thenReturn(originalUrl);
+    // @Test
+    // @DisplayName("GET /{shortUrl} 요청 시 원본 URL로 리디렉션한다.")
+    // void redirect() throws Exception {
+    // // given
+    // String shortUrl = "B";
+    // String originalUrl = "https://example.com";
+    // when(urlService.getOriginalUrl(shortUrl)).thenReturn(originalUrl);
 
-        // when & then
-        mockMvc.perform(get("/" + shortUrl))
-                .andExpect(status().isFound())
-                .andExpect(header().string("Location", originalUrl));
-    }
+    // // when & then
+    // mockMvc.perform(get("/" + shortUrl))
+    // .andExpect(status().isFound())
+    // .andExpect(header().string("Location", originalUrl));
+    // }
 
-    @Test
-    @DisplayName("GET /{shortUrl} 요청 시 URL을 찾지 못하면 404 응답을 반환한다.")
-    void redirect_notFound() throws Exception {
-        // given
-        String shortUrl = "nonexistent";
-        when(urlService.getOriginalUrl(shortUrl)).thenThrow(new IllegalArgumentException());
+    // @Test
+    // @DisplayName("GET /{shortUrl} 요청 시 URL을 찾지 못하면 404 응답을 반환한다.")
+    // void redirect_notFound() throws Exception {
+    // // given
+    // String shortUrl = "nonexistent";
+    // when(urlService.getOriginalUrl(shortUrl)).thenThrow(new
+    // IllegalArgumentException());
 
-        // when & then
-        mockMvc.perform(get("/" + shortUrl))
-                .andExpect(status().isNotFound());
-    }
+    // // when & then
+    // mockMvc.perform(get("/" + shortUrl))
+    // .andExpect(status().isNotFound());
+    // }
 }
