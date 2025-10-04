@@ -42,3 +42,4 @@ out/
 *.key
 *.pem
 results.json
+results-fast.json
