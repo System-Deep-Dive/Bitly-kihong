@@ -99,8 +99,6 @@ k6 run --out influxdb=http://localhost:8086/k6 scenario-b-fast.js
 | P95 응답시간  | < 100ms | 148ms     | ⚠️   | k6 http_req_duration |
 | 에러율        | < 1%    | 0.00%     | ✅   | k6 http_req_failed   |
 | TPS           | > 1000  | 10,597    | ✅   | k6 http_reqs         |
-| 메모리 사용량 | < 1GB   | -         | -    | Redis memory         |
-| CPU 사용률    | < 80%   | -         | -    | Node Exporter        |
 
 ## 해결된 주요 문제
 
