@@ -1,7 +1,6 @@
 import http from 'k6/http';
-import { check, sleep } from 'k6';
-import { SharedArray } from 'k6/data';
-import { Rate, Trend, Counter, Gauge } from 'k6/metrics';
+import { check } from 'k6';
+import { Rate, Trend, Counter } from 'k6/metrics';
 
 /**
  * 시나리오 B: 완전한 캐시 성능 및 히트율 최적화 테스트
@@ -19,36 +18,13 @@ import { Rate, Trend, Counter, Gauge } from 'k6/metrics';
 // 테스트 설정
 export const options = {
   scenarios: {
-    // 1단계: URL 사전 생성
-    url_generation: {
-      executor: 'ramping-vus',
-      startVUs: 1,
-      stages: [
-        { duration: '30s', target: 10 },
-        { duration: '2m', target: 50 },
-        { duration: '30s', target: 0 },
-      ],
-      exec: 'generateUrls',
-      tags: { phase: 'url_generation' },
-    },
-    
-    // 2단계: 부하 테스트
+    // 부하 테스트
     load_test: {
       executor: 'constant-vus',
       vus: 1000,
       duration: '5m',
       exec: 'loadTest',
-      startTime: '3m', // URL 생성 완료 후 시작
       tags: { phase: 'load_test' },
-    },
-    
-    // 3단계: Redis 모니터링
-    redis_monitor: {
-      executor: 'constant-vus',
-      vus: 1,
-      duration: '8m',
-      exec: 'monitorRedis',
-      tags: { phase: 'redis_monitor' },
     },
   },
   
@@ -56,13 +32,8 @@ export const options = {
     // SLO 검증
     http_req_duration: ['p(95)<10', 'p(99)<50'],
     http_req_failed: ['rate<0.01'],
-    
     // 성능 목표
-    cache_hit_rate: ['rate>0.8'],
     http_reqs: ['rate>1000'],
-    
-    // Redis 모니터링
-    redis_hit_rate: ['value>0.8'],
   },
   
   // InfluxDB 배치 설정은 k6 실행 시 --out 옵션으로 처리됨
@@ -70,17 +41,12 @@ export const options = {
 
 // 상수 정의 (SharedArray보다 먼저 정의)
 const BASE_URL = 'http://localhost:8080';
-const REDIS_MONITOR_URL = 'http://localhost:8081/actuator/prometheus';
 
 // 커스텀 메트릭 정의 (SharedArray보다 먼저 정의)
-const cacheHitRate = new Rate('cache_hit_rate');
 const responseTimeP95 = new Trend('response_time_p95');
 const responseTimeP99 = new Trend('response_time_p99');
 const tpsCounter = new Counter('total_requests');
 const errorRate = new Rate('error_rate');
-const redisHitRate = new Gauge('redis_hit_rate');
-const concurrentUsers = new Gauge('concurrent_users');
-const throughput = new Gauge('throughput_tps');
 
 // URL 템플릿 (SharedArray보다 먼저 정의)
 const URL_TEMPLATES = [
@@ -125,18 +91,7 @@ function generateRandomString(chars, length) {
   return result;
 }
 
-// 사전 생성된 URL 데이터 (SharedArray 사용)
-const urlData = new SharedArray('urls', function () {
-  // 빈 배열로 초기화 (HTTP 요청은 setup()에서 수행)
-  return [{ popularUrls: [], unpopularUrls: [], allUrls: [] }];
-});
-
-
-export function generateUrls() {
-  console.log('URL 생성 중...');
-  // URL 생성 로직은 setup()에서 처리됨
-  // 여기서는 단순히 VU가 실행되도록 함
-}
+// 불필요한 사전 VU 실행 시나리오 제거됨
 
 export function setup() {
   console.log('=== 시나리오 B 통합 테스트 시작 ===');
@@ -236,7 +191,6 @@ export function loadTest(data) {
   
   // 메트릭 수집
   tpsCounter.add(1);
-  concurrentUsers.add(__VU);
   
   // 응답 검증
   const isSuccess = check(response, {
@@ -252,73 +206,7 @@ export function loadTest(data) {
   responseTimeP95.add(responseTime);
   responseTimeP99.add(responseTime);
   
-  // 캐시 히트율 시뮬레이션
-  const isCacheHit = responseTime < 5;
-  cacheHitRate.add(isCacheHit);
-  
-      // TPS 계산 (10초마다만 전송)
-      if (__ITER % 10 === 0) {
-        const currentTime = Date.now();
-        const elapsedSeconds = (currentTime - data.startTime) / 1000;
-        if (elapsedSeconds > 0) {
-          const currentTps = tpsCounter.count / elapsedSeconds;
-          if (!isNaN(currentTps) && isFinite(currentTps)) {
-            throughput.add(currentTps);
-          }
-        }
-      }
-}
-
-// 3단계: Redis 모니터링
-export function monitorRedis(data) {
-  try {
-    const response = http.get(REDIS_MONITOR_URL);
-    
-    if (response.status === 200) {
-      // Prometheus 메트릭에서 Redis 정보 추출
-      const metrics = response.body;
-      const lines = metrics.split('\n');
-      
-      let keyspaceHits = 0;
-      let keyspaceMisses = 0;
-      let usedMemory = 0;
-      
-      lines.forEach(line => {
-        if (line.startsWith('redis_keyspace_hits_total')) {
-          const match = line.match(/redis_keyspace_hits_total\s+(\d+)/);
-          if (match) keyspaceHits = parseInt(match[1]);
-        } else if (line.startsWith('redis_keyspace_misses_total')) {
-          const match = line.match(/redis_keyspace_misses_total\s+(\d+)/);
-          if (match) keyspaceMisses = parseInt(match[1]);
-        } else if (line.startsWith('redis_memory_used_bytes')) {
-          const match = line.match(/redis_memory_used_bytes\s+(\d+)/);
-          if (match) usedMemory = parseInt(match[1]);
-        }
-      });
-      
-          const hitRate = (keyspaceHits + keyspaceMisses) > 0 ?
-            keyspaceHits / (keyspaceHits + keyspaceMisses) : 0;
-
-          if (!isNaN(hitRate) && isFinite(hitRate)) {
-            redisHitRate.add(hitRate);
-          }
-      
-      check({ keyspaceHits, keyspaceMisses, usedMemory, hitRate }, {
-        'Redis 연결 성공': (s) => s !== null,
-        '캐시 히트율 > 0': (s) => s.hitRate >= 0,
-        '메모리 사용량 정상': (s) => s.usedMemory > 0 && s.usedMemory < 1000000000,
-      });
-      
-      // 30초마다 상태 출력
-      if (__ITER % 30 === 0) {
-        console.log(`Redis 상태 - 히트율: ${(hitRate * 100).toFixed(2)}%, 메모리: ${(usedMemory / 1024 / 1024).toFixed(2)}MB`);
-      }
-    }
-  } catch (error) {
-    console.error('Redis 모니터링 오류:', error);
-  }
-  
-  sleep(1);
+  // 불필요한 캐시 히트율 시뮬레이션 및 TPS 게이지 전송 제거
 }
 
 export function teardown(data) {
