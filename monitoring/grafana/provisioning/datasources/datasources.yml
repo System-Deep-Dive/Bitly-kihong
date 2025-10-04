@@ -1,0 +1,26 @@
+apiVersion: 1
+
+datasources:
+  # Prometheus 데이터소스 (bitly-dashboard에서 사용하는 UID와 동일하게)
+  - name: Prometheus
+    type: prometheus
+    uid: PBFA97CFB590B2093
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+
+  # InfluxDB 데이터소스 (k6 테스트 결과용)
+  - name: InfluxDB
+    type: influxdb
+    uid: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    database: k6
+    user: k6
+    secureJsonData:
+      password: k6password
+    jsonData:
+      httpMode: GET
+      version: InfluxQL
+    editable: true
