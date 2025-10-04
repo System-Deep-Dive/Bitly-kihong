@@ -41,3 +41,4 @@ out/
 *.secret
 *.key
 *.pem
+results.json
