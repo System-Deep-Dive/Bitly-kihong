@@ -97,7 +97,7 @@ WHERE tablename = 'url';
 - CPU, 메모리, GC 통계
 - DB 커넥션 풀 사용률 (active/idle/waiting)
 
-**확인 방법**: k6 결과, Prometheus/Grafana (`http://localhost:3000`), Actuator (`http://localhost:8081/actuator/metrics`)
+**확인 방법**: k6 결과, Prometheus/Grafana (`http://localhost:3000`), Actuator (`http://localhost:8080/actuator/metrics`)
 
 ### 데이터베이스 메트릭
 
