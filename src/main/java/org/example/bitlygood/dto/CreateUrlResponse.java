@@ -1,36 +1,23 @@
 package org.example.bitlygood.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
-/**
- * URL 단축 응답 DTO
- * 
- * URL 단축 요청에 대한 응답 객체입니다.
- * 생성된 단축코드와 전체 단축 URL을 포함합니다.
- */
+@Schema(description = "URL 단축 응답")
 @Getter
 @AllArgsConstructor
 public class CreateUrlResponse {
 
-    /**
-     * 생성된 단축코드 (alias 또는 자동 생성된 코드)
-     */
+    @Schema(description = "생성된 단축코드", example = "1A2B3C")
     private String shortCode;
 
-    /**
-     * 전체 단축 URL
-     * 도메인과 단축코드를 조합한 완전한 URL
-     */
+    @Schema(description = "전체 단축 URL", example = "http://localhost:8080/1A2B3C")
     private String shortUrl;
 
-    /**
-     * 원본 URL
-     */
+    @Schema(description = "원본 URL", example = "https://www.example.com/very/long/url")
     private String originalUrl;
 
-    /**
-     * 만료일 (있는 경우)
-     */
+    @Schema(description = "만료일", example = "2024-12-31T23:59:59")
     private String expirationDate;
 }
