@@ -4,6 +4,9 @@ build/
 !gradle/wrapper/gradle-wrapper.jar
 .metals
 
+### k6 tests ###
+k6-tests/test-data/phase1-dataset.json
+
 ### STS ###
 .apt_generated
 .classpath
