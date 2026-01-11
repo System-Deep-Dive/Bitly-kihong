@@ -22,6 +22,13 @@ scrape_configs:
     static_configs:
       - targets: ["redis-exporter:9121"]
 
+  # PostgreSQL Exporter (PostgreSQL 메트릭)
+  - job_name: "postgres-exporter"
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
   # Spring Boot Actuator (애플리케이션 메트릭)
   - job_name: "bitly-api"
     metrics_path: "/actuator/prometheus"

@@ -57,7 +57,6 @@ WHERE tablename = 'url';
 DROP INDEX IF EXISTS idx_url_short_url;
 DROP INDEX IF EXISTS idx_url_expiration_date;
 DROP INDEX IF EXISTS idx_url_created_at;
-DROP INDEX IF EXISTS idx_url_short_url;
 
 -- 제거 확인
 SELECT indexname, indexdef
