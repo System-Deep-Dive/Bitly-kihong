@@ -103,6 +103,21 @@
 
 ---
 
+## 테스트 데이터셋 준비
+
+각 Phase에서 동일한 조건으로 테스트하기 위해 데이터셋을 미리 생성합니다.
+
+**가이드**: [data-preparation.md](./data-preparation.md)
+
+**빠른 시작**:
+
+```bash
+cd k6-tests/test-data
+python generate-dataset.py --count 1000
+```
+
+---
+
 ## 다음 단계
 
 1. **Phase 1 실행**: 베이스라인 측정 및 병목 확인 → [phase1-baseline.md](./phase1-baseline.md)
