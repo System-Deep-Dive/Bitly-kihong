@@ -1,22 +1,19 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
-import { SharedArray } from 'k6/data';
 
 // 커스텀 메트릭
 const errorRate = new Rate('errors');
 const redirectLatency = new Trend('redirect_latency');
 
 // 데이터셋 로드
-const dataset = new SharedArray('dataset', function () {
-    const data = JSON.parse(open('./test-data/step1-dataset.json'));
-    return {
-        hot: data.data.hot.map(item => item.shortCode),
-        warm: data.data.warm.map(item => item.shortCode),
-        cold: data.data.cold.map(item => item.shortCode),
-        invalid: data.data.invalid,
-    };
-});
+const data = JSON.parse(open('./test-data/step1-dataset.json'));
+const dataset = {
+    hot: data.data.hot.map(item => item.shortCode),
+    warm: data.data.warm.map(item => item.shortCode),
+    cold: data.data.cold.map(item => item.shortCode),
+    invalid: data.data.invalid,
+};
 
 // Base URL
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
