@@ -1,7 +1,9 @@
 package org.example.bitlygood.service;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+
 import org.example.bitlygood.domain.Url;
 import org.example.bitlygood.dto.CreateUrlRequest;
 import org.example.bitlygood.dto.CreateUrlResponse;
@@ -10,9 +12,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * URL 단축 서비스
@@ -198,10 +199,19 @@ public class UrlService {
     public String getOriginalUrl(String shortCode) {
         log.debug("Retrieving original URL for short code: {}", shortCode);
 
-        // 캐시 서비스를 통한 조회 (캐시 우선)
-        return urlCacheService.getOriginalUrl(shortCode)
+        // // 캐시 서비스를 통한 조회 (캐시 우선)
+        // return urlCacheService.getOriginalUrl(shortCode)
+        // .orElseThrow(() -> {
+        // // 단축 코드가 존재하지 않는 경우 예외 발생
+        // log.warn("No original URL found for short code: {}", shortCode);
+        // return new IllegalArgumentException("Invalid short url");
+        // });
+
+        // Phase 1: 캐시 우회 - Repository 직접 호출
+        return urlRepository.findByShortUrl(shortCode)
+                .filter(url -> !url.isExpired())
+                .map(Url::getOriginalUrl)
                 .orElseThrow(() -> {
-                    // 단축 코드가 존재하지 않는 경우 예외 발생
                     log.warn("No original URL found for short code: {}", shortCode);
                     return new IllegalArgumentException("Invalid short url");
                 });
