@@ -67,10 +67,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -87,12 +83,12 @@
       "id": 1,
       "options": {
         "legend": {
-          "calcs": [],
-          "displayMode": "list",
+          "calcs": ["last", "max"],
+          "displayMode": "table",
           "placement": "bottom"
         },
         "tooltip": {
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
@@ -103,14 +99,14 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "rate(http_server_requests_seconds_count{job=\"bitly-api\"}[5m])",
+          "expr": "rate(http_server_requests_seconds_count{job=\"bitly-api\",uri=~\"/.*\"}[5m])",
           "instant": false,
           "legendFormat": "{{method}} {{uri}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "HTTP 요청 처리율",
+      "title": "HTTP 요청 처리율 (RPS)",
       "type": "timeseries"
     },
     {
@@ -136,7 +132,7 @@
               "vis": false
             },
             "lineInterpolation": "linear",
-            "lineWidth": 1,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -160,8 +156,12 @@
                 "value": null
               },
               {
+                "color": "yellow",
+                "value": 0.1
+              },
+              {
                 "color": "red",
-                "value": 80
+                "value": 0.5
               }
             ]
           },
@@ -178,12 +178,12 @@
       "id": 2,
       "options": {
         "legend": {
-          "calcs": [],
-          "displayMode": "list",
+          "calcs": ["last", "max"],
+          "displayMode": "table",
           "placement": "bottom"
         },
         "tooltip": {
-          "mode": "single",
+          "mode": "multi",
           "sort": "none"
         }
       },
@@ -194,9 +194,9 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{job=\"bitly-api\"}[5m]))",
+          "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{job=\"bitly-api\",uri=~\"/.*\"}[5m]))",
           "instant": false,
-          "legendFormat": "95th percentile",
+          "legendFormat": "p95",
           "range": true,
           "refId": "A"
         },
@@ -206,16 +206,94 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, rate(http_server_requests_seconds_bucket{job=\"bitly-api\"}[5m]))",
-          "hide": false,
+          "expr": "histogram_quantile(0.50, rate(http_server_requests_seconds_bucket{job=\"bitly-api\",uri=~\"/.*\"}[5m]))",
           "instant": false,
-          "legendFormat": "50th percentile",
+          "legendFormat": "p50",
           "range": true,
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket{job=\"bitly-api\",uri=~\"/.*\"}[5m]))",
+          "instant": false,
+          "legendFormat": "p99",
+          "range": true,
+          "refId": "C"
         }
       ],
-      "title": "HTTP 응답 시간 (P95, P50)",
+      "title": "HTTP 응답 시간 (p50, p95, p99)",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.01
+              },
+              {
+                "color": "red",
+                "value": 0.05
+              }
+            ]
+          },
+          "unit": "percentunit"
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rate(http_server_requests_seconds_count{job=\"bitly-api\",status=~\"5..\"}[5m]) / rate(http_server_requests_seconds_count{job=\"bitly-api\"}[5m])",
+          "instant": false,
+          "legendFormat": "에러율",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "HTTP 에러율",
+      "type": "gauge"
     },
     {
       "datasource": {
@@ -262,27 +340,23 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
-          "unit": "percent"
+          "unit": "short"
         },
         "overrides": []
       },
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 0,
+        "x": 6,
         "y": 8
       },
-      "id": 3,
+      "id": 4,
       "options": {
         "legend": {
-          "calcs": [],
+          "calcs": ["last"],
           "displayMode": "list",
           "placement": "bottom"
         },
@@ -305,7 +379,7 @@
           "refId": "A"
         }
       ],
-      "title": "CPU 사용률",
+      "title": "애플리케이션 CPU 사용률",
       "type": "timeseries"
     },
     {
@@ -353,10 +427,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -367,13 +437,13 @@
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 8,
+        "x": 14,
         "y": 8
       },
-      "id": 4,
+      "id": 5,
       "options": {
         "legend": {
-          "calcs": [],
+          "calcs": ["last", "max"],
           "displayMode": "list",
           "placement": "bottom"
         },
@@ -386,7 +456,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": null
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "jvm_memory_used_bytes{area=\"heap\",job=\"bitly-api\"}",
@@ -394,15 +464,27 @@
           "legendFormat": "Heap 메모리 사용량",
           "range": true,
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "jvm_memory_max_bytes{area=\"heap\",job=\"bitly-api\"}",
+          "instant": false,
+          "legendFormat": "Heap 메모리 최대",
+          "range": true,
+          "refId": "B"
         }
       ],
-      "title": "JVM Heap 메모리 사용량",
+      "title": "JVM Heap 메모리",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": null
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -444,10 +526,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -458,13 +536,13 @@
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 16,
-        "y": 8
+        "x": 0,
+        "y": 16
       },
-      "id": 5,
+      "id": 6,
       "options": {
         "legend": {
-          "calcs": [],
+          "calcs": ["last"],
           "displayMode": "list",
           "placement": "bottom"
         },
@@ -480,15 +558,96 @@
             "uid": null
           },
           "editorMode": "code",
-          "expr": "redis_connected_clients{job=\"redis-exporter\"}",
+          "expr": "redis_keyspace_hits_total{job=\"redis-exporter\"}",
           "instant": false,
-          "legendFormat": "Redis 연결 클라이언트 수",
+          "legendFormat": "Redis 히트",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": null
+          },
+          "editorMode": "code",
+          "expr": "redis_keyspace_misses_total{job=\"redis-exporter\"}",
+          "instant": false,
+          "legendFormat": "Redis 미스",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Redis 캐시 히트/미스 (Phase 3)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": null
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "max": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.7
+              },
+              {
+                "color": "green",
+                "value": 0.8
+              }
+            ]
+          },
+          "unit": "percentunit"
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 16
+      },
+      "id": 7,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": null
+          },
+          "editorMode": "code",
+          "expr": "redis_keyspace_hits_total{job=\"redis-exporter\"} / (redis_keyspace_hits_total{job=\"redis-exporter\"} + redis_keyspace_misses_total{job=\"redis-exporter\"})",
+          "instant": false,
+          "legendFormat": "캐시 히트율",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Redis 연결 상태",
-      "type": "timeseries"
+      "title": "캐시 히트율 (Phase 3)",
+      "type": "gauge"
     },
     {
       "datasource": {
@@ -535,10 +694,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -548,14 +703,14 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 0,
+        "w": 8,
+        "x": 12,
         "y": 16
       },
-      "id": 6,
+      "id": 8,
       "options": {
         "legend": {
-          "calcs": [],
+          "calcs": ["last"],
           "displayMode": "list",
           "placement": "bottom"
         },
@@ -578,13 +733,13 @@
           "refId": "A"
         }
       ],
-      "title": "Redis 메모리 사용량",
+      "title": "Redis 메모리 사용량 (Phase 3)",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": null
+        "uid": "PBFA97CFB590B2093"
       },
       "fieldConfig": {
         "defaults": {
@@ -626,10 +781,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -639,14 +790,14 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
+        "w": 8,
+        "x": 20,
         "y": 16
       },
-      "id": 7,
+      "id": 9,
       "options": {
         "legend": {
-          "calcs": [],
+          "calcs": ["last"],
           "displayMode": "list",
           "placement": "bottom"
         },
@@ -659,30 +810,17 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": null
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "redis_keyspace_hits_total{job=\"redis-exporter\"}",
+          "expr": "rate(jvm_gc_pause_seconds_count{job=\"bitly-api\"}[5m])",
           "instant": false,
-          "legendFormat": "Redis 키스페이스 히트",
+          "legendFormat": "{{gc}}",
           "range": true,
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": null
-          },
-          "editorMode": "code",
-          "expr": "redis_keyspace_misses_total{job=\"redis-exporter\"}",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "Redis 키스페이스 미스",
-          "range": true,
-          "refId": "B"
         }
       ],
-      "title": "Redis 캐시 히트/미스",
+      "title": "JVM GC 횟수",
       "type": "timeseries"
     }
   ],
@@ -690,11 +828,46 @@
   "schemaVersion": 38,
   "style": "dark",
   "tags": [
-    "bitly",
-    "monitoring"
+    "step1",
+    "phase",
+    "performance"
   ],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "Phase 1",
+          "value": "Phase 1"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Phase",
+        "multi": false,
+        "name": "phase",
+        "options": [
+          {
+            "selected": true,
+            "text": "Phase 1",
+            "value": "Phase 1"
+          },
+          {
+            "selected": false,
+            "text": "Phase 2",
+            "value": "Phase 2"
+          },
+          {
+            "selected": false,
+            "text": "Phase 3",
+            "value": "Phase 3"
+          }
+        ],
+        "query": "Phase 1 : Phase 2 : Phase 3",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      }
+    ]
   },
   "time": {
     "from": "now-1h",
@@ -702,8 +875,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Bitly API 모니터링 대시보드",
-  "uid": "bitly-dashboard",
+  "title": "Step 1: Phase별 성능 비교",
+  "uid": "step1-phase-dashboard",
   "version": 1,
   "weekStart": ""
 }
