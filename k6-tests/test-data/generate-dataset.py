@@ -10,7 +10,7 @@ Step 1 Phase별 테스트 데이터셋 생성 스크립트
 
 옵션:
     --count: 생성할 URL 개수 (기본값: 1000)
-    --output: 출력 파일 경로 (기본값: phase1-dataset.json)
+    --output: 출력 파일 경로 (기본값: step1-dataset.json)
 """
 
 import argparse
@@ -131,8 +131,8 @@ def main():
     parser.add_argument(
         "--output",
         type=str,
-        default="phase1-dataset.json",
-        help="Output file path (default: phase1-dataset.json)",
+        default="step1-dataset.json",
+        help="Output file path (default: step1-dataset.json)",
     )
 
     args = parser.parse_args()

@@ -47,12 +47,16 @@ public String getOriginalUrl(String shortCode) {
 PostgreSQL에서 인덱스 제거:
 
 ```sql
+psql -U user -d bitly
+
 -- 현재 인덱스 확인
 SELECT indexname, indexdef
 FROM pg_indexes
 WHERE tablename = 'url';
-
--- 인덱스 제거
+-- Phase 1: 인덱스 제거 (조회 성능에 영향을 주는 인덱스들)
+DROP INDEX IF EXISTS idx_url_short_url;
+DROP INDEX IF EXISTS idx_url_expiration_date;
+DROP INDEX IF EXISTS idx_url_created_at;
 DROP INDEX IF EXISTS idx_url_short_url;
 
 -- 제거 확인
@@ -63,10 +67,9 @@ WHERE tablename = 'url';
 
 **실행 체크리스트**:
 
-- [ ] PostgreSQL에 접속
-- [ ] 현재 인덱스 목록 확인
-- [ ] `idx_url_short_url` 인덱스 제거
-- [ ] 인덱스 제거 확인
+- [x] 현재 인덱스 목록 확인
+- [x] 인덱스 제거
+- [x] 인덱스 제거 확인
 
 ---
 
@@ -141,29 +144,45 @@ WHERE u.short_url = '실제_shortCode_값';
 
 ## k6 실행
 
-**Phase 1용 k6 시나리오 파일 생성**:
+**Phase 1용 k6 시나리오 파일**:
 
-기존 `scenario-b-minimal.js`를 복사하여 `scenario-phase1.js`로 생성:
+`k6-tests/scenario-phase1.js` 파일이 준비되어 있습니다.
 
-```bash
-cd k6-tests
-cp scenario-b-minimal.js scenario-phase1.js
-```
+**시나리오 구성**:
 
-`scenario-phase1.js`는 `scenario-b-minimal.js`와 동일하게 사용 (수정 불필요)
+- **스모크 테스트**: VU 10, 1분 (정상 동작 확인)
+- **램프업**: VU 10 → 500 → 1,000 (각 2분)
+- **스테디 상태**: VU 1,000 유지 3분
+- **총 실행 시간**: 약 10분
+
+**데이터 분포**:
+
+- Hot: 50% (상위 1% 코드)
+- Warm: 30% (1%~10% 코드)
+- Cold: 20% (나머지 90% 코드)
+- Invalid: 2% (404 테스트)
 
 **k6 테스트 실행**:
 
 ```bash
 cd k6-tests
-k6 run --out json=results-phase1.json scenario-phase1.js
+k6 run scenario-phase1.js
+```
+
+또는 JSON 결과만 저장하려면:
+
+```bash
+cd k6-tests
+k6 run --out json=results/results-phase1.json scenario-phase1.js
 ```
 
 **실행 체크리스트**:
 
-- [ ] `scenario-b-minimal.js`를 복사하여 `scenario-phase1.js` 생성
+- [ ] `k6-tests/test-data/step1-dataset.json` 파일 존재 확인
 - [ ] k6 테스트 실행
-- [ ] 결과 파일 확인 (`results-phase1.json`)
+- [ ] 결과 파일 확인 (`results/results-phase1.json`)
+
+**참고**: 모든 Phase(1, 2, 3)에서 동일한 데이터셋(`step1-dataset.json`)과 동일한 시나리오(`scenario-phase1.js`)를 사용합니다.
 
 ---
 

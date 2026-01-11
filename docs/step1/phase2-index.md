@@ -69,17 +69,28 @@ SELECT * FROM url WHERE "shortUrl" = '동일한_shortCode_값';
 
 ## k6 실행
 
+**Phase 1과 동일한 시나리오 사용**:
+
 ```bash
 cd k6-tests
-k6 run --out json=results-phase2.json scenario-phase1.js
-# 동일한 시나리오 사용 (변수는 인덱스만 변경)
+k6 run --out json=results/results-phase2.json scenario-phase1.js
 ```
+
+또는 환경 변수로 Phase 지정:
+
+```bash
+cd k6-tests
+PHASE=phase2 k6 run scenario-phase1.js
+```
+
+**참고**: Phase 1과 동일한 데이터셋(`step1-dataset.json`)과 동일한 시나리오를 사용하여 공정한 비교가 가능합니다.
 
 **실행 체크리스트**:
 
+- [ ] `k6-tests/test-data/step1-dataset.json` 파일 존재 확인
 - [ ] Phase 1과 동일한 k6 시나리오 사용
 - [ ] k6 테스트 실행
-- [ ] 결과 파일 저장 (`results-phase2.json`)
+- [ ] 결과 파일 확인 (`results/results-phase2.json`)
 
 ---
 

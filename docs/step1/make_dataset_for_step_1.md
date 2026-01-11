@@ -28,13 +28,13 @@
 
 ```bash
 cd k6-tests/test-data
-python generate-dataset.py --count 1000 --output phase1-dataset.json
+python generate-dataset.py --count 1000 --output step1-dataset.json
 ```
 
 **옵션**:
 
 - `--count`: 생성할 URL 개수 (기본값: 1000)
-- `--output`: 출력 파일 경로 (기본값: phase1-dataset.json)
+- `--output`: 출력 파일 경로 (기본값: step1-dataset.json)
 
 **권장 설정**:
 
@@ -83,7 +83,7 @@ k6 시나리오의 `setup()` 함수에서 데이터셋을 로드:
 
 ```javascript
 export function setup() {
-  const dataset = JSON.parse(open("./test-data/phase1-dataset.json"));
+  const dataset = JSON.parse(open("./test-data/step1-dataset.json"));
 
   return {
     hotUrls: dataset.data.hot,
@@ -114,7 +114,7 @@ export function setup() {
 ### 데이터셋 생성
 
 - [ ] 데이터셋 생성 스크립트 실행
-- [ ] 생성된 파일 확인 (`phase1-dataset.json`)
+- [ ] 생성된 파일 확인 (`step1-dataset.json`)
 - [ ] 데이터 분포 확인 (Hot/Warm/Cold 개수)
 
 ### 각 Phase 실행 전
