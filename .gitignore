@@ -5,7 +5,10 @@ build/
 .metals
 
 ### k6 tests ###
-k6-tests/test-data/phase1-dataset.json
+k6-tests/test-data/step1-dataset.json
+
+### Bloop ###
+.bloop/
 
 ### STS ###
 .apt_generated
