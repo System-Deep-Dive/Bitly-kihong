@@ -179,9 +179,9 @@ k6 run --out json=results/results-phase1.json scenario-phase1.js
 
 **실행 체크리스트**:
 
-- [ ] `k6-tests/test-data/step1-dataset.json` 파일 존재 확인
-- [ ] k6 테스트 실행
-- [ ] 결과 파일 확인 (`results/results-phase1.json`)
+- [x] `k6-tests/test-data/step1-dataset.json` 파일 존재 확인
+- [x] k6 테스트 실행
+- [x] 결과 파일 확인 (`results/results-phase1.json`)
 
 **참고**: 모든 Phase(1, 2, 3)에서 동일한 데이터셋(`step1-dataset.json`, 100,000개)과 동일한 시나리오(`scenario-phase1.js`)를 사용합니다.
 
@@ -278,21 +278,27 @@ Seq Scan on public.url u  (cost=0.02..2280.77 rows=1 width=63) (actual time=0.17
 
 1. **심각한 병목 확인**:
 
-   - RPS가 97.68 req/s로 매우 낮음 (10,000 VU 기준 예상치의 1% 수준)
+   - 10,000 VU를 투입했음에도 불구하고 RPS가 97.68 req/s로 제한됨
    - p95 응답 시간이 11,175.93ms로 매우 높음
    - 평균 반복 시간이 53초로 긴 대기 시간 발생
 
 2. **병목 지점**:
 
-   - **DB 커넥션 풀 부족**: 10개 커넥션으로 10,000 VU 처리 불가
-   - **DB Seq Scan 비용**: Execution Time 86.340ms로 쿼리 실행이 느림
-   - **시스템 처리 용량 초과**: 이론적 처리 용량(약 110 req/s)에 도달
+   - **DB Seq Scan 비용**: Execution Time 86.340ms로 쿼리 실행이 느림 (주 병목)
+   - **시스템 처리 용량 초과**: 이론적 처리 용량(약 115.8 req/s)에 거의 도달
+   - **커넥션 풀은 충분함**: Active Connections는 최대 4개만 사용 (커넥션 풀 부족이 아님)
 
 3. **처리량 분석**:
 
-   - 실제 RPS: 97.68 req/s
-   - 이론적 처리 용량: 10개 커넥션 × 초당 11개 쿼리 ≈ 110 req/s
-   - 일치도: 약 89% (커넥션 풀과 Seq Scan 비용으로 제한됨)
+   - 투입한 부하: 10,000 VU
+   - 실제 처리량:
+     - k6 RPS: 97.68 req/s
+     - DB QPS: 최대 124, Last 82.5
+   - 이론적 처리 용량: 10개 커넥션 × (1000ms / 86.340ms) ≈ 115.8 req/s
+   - 실제 DB QPS (124)가 이론적 처리 용량(115.8)에 거의 도달함 (약 107% 활용률)
+   - **핵심 발견**: Active Connections는 최대 4개만 사용됨
+     → 커넥션 풀 부족이 아닌, Query Execution Time (86.340ms)로 인한 처리량 제한
+     → 각 쿼리가 느려서 커넥션이 충분해도 전체 처리량이 제한됨
 
 4. **예상 개선 효과**:
    - Phase 2 (인덱스): Execution Time 감소 → 처리량 증가 예상
@@ -300,42 +306,42 @@ Seq Scan on public.url u  (cost=0.02..2280.77 rows=1 width=63) (actual time=0.17
 
 ### 병목 가설 및 검증
 
-1. **병목 지점: DB 커넥션 풀 부족** ✅ **검증됨**
-
-   - **근거**:
-     - RPS가 97.68 req/s로 매우 낮음 (10,000 VU 기준으로 예상치의 1% 수준)
-     - 평균 반복 시간이 53초로 매우 긴 대기 시간 발생
-     - p95 응답 시간이 11,175.93ms로 매우 높음
-     - 커넥션 풀 최대 크기(10개)가 VU(10,000)에 비해 매우 작음
-   - **영향**:
-     - 대부분의 요청이 커넥션 획득을 위해 대기하게 됨
-     - 커넥션 획득 시간이 증가하여 전체 응답 시간 증가
-     - 실제 처리량이 이론적 처리 용량에 제한됨
-   - **측정 방법**: Grafana에서 `hikaricp.connections.pending` 및 `hikaricp.connections.acquire` 메트릭 모니터링
-
-2. **병목 지점: DB Seq Scan 비용** ✅ **검증됨**
+1. **병목 지점: DB Seq Scan 비용** ✅ **검증됨 (주 병목)**
 
    - **근거**:
      - EXPLAIN ANALYZE에서 Seq Scan 확인
      - Execution Time: 86.340 ms (100,000개 데이터 기준)
      - 각 쿼리가 약 86ms 소요 → 초당 약 11-12개 쿼리만 처리 가능
-     - 10개 커넥션 × 초당 11개 = 약 110 req/s 처리 가능 (실제 RPS 97.68과 유사)
+     - 이론적 처리 용량: 10개 커넥션 × (1000ms / 86.340ms) ≈ 115.8 req/s
+     - 실제 DB QPS (최대 124)가 이론적 처리 용량(115.8)에 거의 도달함 (약 107% 활용률)
    - **영향**:
      - DB 쿼리 실행 시간(Execution Time)이 길어서 전체 처리량 제한
      - DB CPU 사용률 증가
      - Rows Removed by Filter: 99,999개로 Seq Scan 비용 큼
    - **측정 방법**: `EXPLAIN ANALYZE`로 Seq Scan 및 Execution Time 확인 (완료)
 
-3. **병목 지점: 시스템 처리 용량 초과** ✅ **검증됨**
+2. **병목 지점: 시스템 처리 용량 초과** ✅ **검증됨**
+
    - **근거**:
-     - 실제 RPS (97.68 req/s)가 이론적 처리 용량(약 110 req/s)과 유사
+     - 실제 DB QPS (최대 124)가 이론적 처리 용량(115.8 req/s)에 거의 도달
+     - 실제 k6 RPS (97.68 req/s)도 이론적 처리 용량과 유사
      - 에러율 1.35%로 일부 요청 실패 발생
      - 평균 반복 시간이 53초로 매우 긴 대기
    - **영향**:
      - 시스템이 처리 용량 한계에 도달
      - 추가 요청은 큐잉되거나 실패
-     - DB Active Connections가 최대치 유지 가능성
    - **측정 방법**: Grafana에서 DB QPS 및 Active Connections 모니터링
+
+3. **커넥션 풀은 충분함** ✅ **검증됨**
+
+   - **근거**:
+     - Active Connections는 최대 4개만 사용됨 (커넥션 풀 최대 10개)
+     - 실제 DB QPS가 이론적 처리 용량에 거의 도달함에도 불구하고 커넥션은 4개만 사용
+   - **의미**:
+     - 커넥션 풀 부족이 병목이 아님
+     - Query Execution Time (86.340ms)이 길어서, 적은 수의 커넥션으로도 처리 용량 한계에 도달
+     - 각 쿼리가 느려서 커넥션이 충분해도 전체 처리량이 제한됨
+   - **측정 방법**: Grafana에서 DB Active Connections 모니터링 (최대 4개 확인)
 
 ---
 
