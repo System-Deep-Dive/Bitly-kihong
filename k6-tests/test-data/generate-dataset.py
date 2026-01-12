@@ -107,8 +107,13 @@ def categorize_urls(urls: List[Dict], total_count: int) -> Dict:
     cold_urls = urls[warm_total_count:]  # 10% 이후
 
     # Invalid URLs: 존재하지 않는 코드 (404 테스트용)
+    # UUID 기반으로 겹칠 확률이 거의 없는 코드 생성
+    import uuid
+
     invalid_count = max(1, int(total_count * 0.02))
-    invalid_urls = [f"INVALID{i:06d}" for i in range(invalid_count)]
+    invalid_urls = [
+        str(uuid.uuid4()).replace("-", "")[:16] for _ in range(invalid_count)
+    ]
 
     return {
         "hot": hot_urls,

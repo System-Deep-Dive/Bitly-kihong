@@ -1,19 +1,42 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
+import { SharedArray } from 'k6/data';
 
 // 커스텀 메트릭
 const errorRate = new Rate('errors');
 const redirectLatency = new Trend('redirect_latency');
 
-// 데이터셋 로드
-const data = JSON.parse(open('./test-data/step1-dataset.json'));
+// 데이터셋 로드 (SharedArray 사용 - 모든 VU가 공유)
+// SharedArray는 배열만 받을 수 있으므로, 각 배열을 별도로 생성
+const hotCodes = new SharedArray('hot', function () {
+    const data = JSON.parse(open('./test-data/step1-dataset.json'));
+    return data.data.hot.map(item => item.shortCode);
+});
+
+const warmCodes = new SharedArray('warm', function () {
+    const data = JSON.parse(open('./test-data/step1-dataset.json'));
+    return data.data.warm.map(item => item.shortCode);
+});
+
+const coldCodes = new SharedArray('cold', function () {
+    const data = JSON.parse(open('./test-data/step1-dataset.json'));
+    return data.data.cold.map(item => item.shortCode);
+});
+
+const invalidCodes = new SharedArray('invalid', function () {
+    const data = JSON.parse(open('./test-data/step1-dataset.json'));
+    return data.data.invalid;
+});
+
+// 편의를 위해 dataset 객체 생성 (참조만)
 const dataset = {
-    hot: data.data.hot.map(item => item.shortCode),
-    warm: data.data.warm.map(item => item.shortCode),
-    cold: data.data.cold.map(item => item.shortCode),
-    invalid: data.data.invalid,
+    hot: hotCodes,
+    warm: warmCodes,
+    cold: coldCodes,
+    invalid: invalidCodes,
 };
+
 
 // Base URL
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
@@ -47,10 +70,10 @@ export const options = {
         // 스모크 테스트: 정상 동작 확인
         { duration: '1m', target: 10 },
         // 램프업: 점진적 부하 증가
-        { duration: '2m', target: 500 },
-        { duration: '2m', target: 1000 },
+        { duration: '3m', target: 5000 },
+        { duration: '3m', target: 10000 },
         // 스테디 상태: 최대 부하 유지
-        { duration: '3m', target: 1000 },
+        { duration: '5m', target: 10000 },
     ],
     thresholds: {
         // HTTP 요청 성공률
