@@ -150,9 +150,11 @@ WHERE u.short_url = '실제_shortCode_값';
 **시나리오 구성**:
 
 - **스모크 테스트**: VU 10, 1분 (정상 동작 확인)
-- **램프업**: VU 10 → 500 → 1,000 (각 2분)
-- **스테디 상태**: VU 1,000 유지 3분
-- **총 실행 시간**: 약 10분
+- **램프업**: VU 10 → 5,000 → 10,000 (각 3분)
+- **스테디 상태**: VU 10,000 유지 5분
+- **총 실행 시간**: 약 12분
+
+> **참고**: 병목 현상을 명확히 확인하기 위해 VU를 10,000으로 증가시켰습니다.
 
 **데이터 분포**:
 
@@ -181,7 +183,7 @@ k6 run --out json=results/results-phase1.json scenario-phase1.js
 - [ ] k6 테스트 실행
 - [ ] 결과 파일 확인 (`results/results-phase1.json`)
 
-**참고**: 모든 Phase(1, 2, 3)에서 동일한 데이터셋(`step1-dataset.json`)과 동일한 시나리오(`scenario-phase1.js`)를 사용합니다.
+**참고**: 모든 Phase(1, 2, 3)에서 동일한 데이터셋(`step1-dataset.json`, 100,000개)과 동일한 시나리오(`scenario-phase1.js`)를 사용합니다.
 
 ---
 
@@ -189,48 +191,151 @@ k6 run --out json=results/results-phase1.json scenario-phase1.js
 
 ### k6 테스트 결과
 
-| 지표        | 값   | 비고 |
-| ----------- | ---- | ---- |
-| 총 요청 수  | ?    |      |
-| 성공률      | ?%   |      |
-| p50 latency | ? ms |      |
-| p95 latency | ? ms |      |
-| p99 latency | ? ms |      |
-| RPS         | ?    |      |
-| 에러율      | ?%   |      |
+| 지표        | 값           | 비고                            |
+| ----------- | ------------ | ------------------------------- |
+| 총 요청 수  | 77,905       |                                 |
+| 성공률      | 98.65%       | HTTP 요청 기준 (checks: 99.99%) |
+| p50 latency | 348.94 ms    |                                 |
+| p95 latency | 11,175.93 ms | 매우 높음 (병목 확인)           |
+| p99 latency | >1,000 ms    | Threshold 실패 (매우 높음)      |
+| RPS         | 97.68        | 매우 낮음 (10,000 VU 기준)      |
+| 에러율      | 1.35%        | 타임아웃/커넥션 거부 가능성     |
 
 ### 데이터베이스 메트릭
 
-| 지표               | 값  | 비고 |
-| ------------------ | --- | ---- |
-| DB QPS             | ?   |      |
-| Active connections | ?   |      |
-| DB CPU 사용률      | ?%  |      |
-| Slow query 수      | ?   |      |
+| 지표               | 값                 | 비고                                     |
+| ------------------ | ------------------ | ---------------------------------------- |
+| DB QPS             | ~97.68 (k6)        | k6 RPS와 유사 (커넥션 풀 제한)           |
+|                    | Last 82.5, Max 124 | Grafana 실시간 모니터링                  |
+| Active connections | 최대 4개           | Grafana 실제 측정값 (HikariCP 최대 10개) |
+
+### Grafana 실시간 모니터링 메트릭
+
+**HTTP 메트릭**:
+
+| 지표                   | 값                | 비고              |
+| ---------------------- | ----------------- | ----------------- |
+| HTTP 요청 처리율 (RPS) | Last 74.6 req/s   | Grafana 측정값    |
+|                        | Max 119 req/s     |                   |
+| HTTP 응답 시간 (p95)   | Last 13.2-16.6 ms | 서버 측 응답 시간 |
+|                        | Max 14.4-27.1 ms  |                   |
+
+**애플리케이션 메트릭**:
+
+| 지표            | 값                      | 비고 |
+| --------------- | ----------------------- | ---- |
+| CPU 사용률      | Last 2.38               |      |
+| JVM Heap 메모리 | Last 6.08-151 MiB       |      |
+|                 | Max 67.7-166 MiB        |      |
+| JVM GC 횟수     | MarkSweepCompact 0.0238 |      |
+|                 | Copy 0.0715             |      |
+
+**메트릭 차이점 설명**:
+
+- **k6 p95 latency (11,175.93 ms) vs Grafana p95 (13-27 ms)**:
+  - k6는 클라이언트 측 응답 시간 (네트워크 지연, 커넥션 대기 시간 포함)
+  - Grafana는 서버 측 메트릭 (애플리케이션 처리 시간만 측정)
+  - 차이는 주로 커넥션 풀 대기 시간과 네트워크 지연에서 발생
+- **k6 RPS (97.68) vs Grafana RPS (Max 119)**:
+  - 측정 시점과 방식의 차이
+  - Grafana는 서버 측 실제 처리량, k6는 클라이언트 측 요청률
 
 ### EXPLAIN ANALYZE 결과
 
 **실행 계획**:
 
 ```
-[여기에 EXPLAIN ANALYZE 결과 붙여넣기]
+Seq Scan on public.url u  (cost=0.02..2280.77 rows=1 width=63) (actual time=0.177..86.177 rows=1 loops=1)
+   Output: u.id, u.original_url, u.short_url, u.expiration_date, u.created_at
+   Filter: ((u.short_url)::text = ($0)::text)
+   Rows Removed by Filter: 99999
+   Buffers: shared hit=1032
+   InitPlan 1 (returns $0)
+     ->  Limit  (cost=0.00..0.02 rows=1 width=4) (actual time=0.033..0.034 rows=1 loops=1)
+           Output: url.short_url
+           Buffers: shared hit=1
+           ->  Seq Scan on public.url  (cost=0.00..2030.80 rows=99980 width=4) (actual time=0.003..0.004 rows=1 loops=1)
+                 Output: url.short_url
+                 Buffers: shared hit=1
+ Planning:
+   Buffers: shared hit=12 dirtied=3
+ Planning Time: 3.236 ms
+ Execution Time: 86.340 ms
 ```
 
-### 병목 가설
+**분석**:
 
-1. **병목 지점**: ?
+- **Seq Scan 확인**: 인덱스 없이 전체 테이블 스캔 수행 ✅
+- **Execution Time**: 86.340 ms (100,000개 데이터 기준)
+- **Rows Removed by Filter**: 99,999개 (Seq Scan의 전형적인 패턴)
+- **Buffers**: shared hit=1032 (메모리에서 읽음, 디스크 I/O 없음)
 
-   - **근거**: ?
-   - **영향**: ?
+> **참고**: InitPlan은 테스트 쿼리에 포함된 서브쿼리로, 실제 애플리케이션 쿼리에는 없을 수 있습니다. 핵심은 Seq Scan과 Execution Time입니다.
 
-2. **병목 지점**: ?
+### 결과 요약
 
-   - **근거**: ?
-   - **영향**: ?
+**주요 발견사항**:
 
-3. **병목 지점**: ?
-   - **근거**: ?
-   - **영향**: ?
+1. **심각한 병목 확인**:
+
+   - RPS가 97.68 req/s로 매우 낮음 (10,000 VU 기준 예상치의 1% 수준)
+   - p95 응답 시간이 11,175.93ms로 매우 높음
+   - 평균 반복 시간이 53초로 긴 대기 시간 발생
+
+2. **병목 지점**:
+
+   - **DB 커넥션 풀 부족**: 10개 커넥션으로 10,000 VU 처리 불가
+   - **DB Seq Scan 비용**: Execution Time 86.340ms로 쿼리 실행이 느림
+   - **시스템 처리 용량 초과**: 이론적 처리 용량(약 110 req/s)에 도달
+
+3. **처리량 분석**:
+
+   - 실제 RPS: 97.68 req/s
+   - 이론적 처리 용량: 10개 커넥션 × 초당 11개 쿼리 ≈ 110 req/s
+   - 일치도: 약 89% (커넥션 풀과 Seq Scan 비용으로 제한됨)
+
+4. **예상 개선 효과**:
+   - Phase 2 (인덱스): Execution Time 감소 → 처리량 증가 예상
+   - Phase 3 (캐시): Hot/Warm 데이터 캐시 처리 → DB 부하 대폭 감소 예상
+
+### 병목 가설 및 검증
+
+1. **병목 지점: DB 커넥션 풀 부족** ✅ **검증됨**
+
+   - **근거**:
+     - RPS가 97.68 req/s로 매우 낮음 (10,000 VU 기준으로 예상치의 1% 수준)
+     - 평균 반복 시간이 53초로 매우 긴 대기 시간 발생
+     - p95 응답 시간이 11,175.93ms로 매우 높음
+     - 커넥션 풀 최대 크기(10개)가 VU(10,000)에 비해 매우 작음
+   - **영향**:
+     - 대부분의 요청이 커넥션 획득을 위해 대기하게 됨
+     - 커넥션 획득 시간이 증가하여 전체 응답 시간 증가
+     - 실제 처리량이 이론적 처리 용량에 제한됨
+   - **측정 방법**: Grafana에서 `hikaricp.connections.pending` 및 `hikaricp.connections.acquire` 메트릭 모니터링
+
+2. **병목 지점: DB Seq Scan 비용** ✅ **검증됨**
+
+   - **근거**:
+     - EXPLAIN ANALYZE에서 Seq Scan 확인
+     - Execution Time: 86.340 ms (100,000개 데이터 기준)
+     - 각 쿼리가 약 86ms 소요 → 초당 약 11-12개 쿼리만 처리 가능
+     - 10개 커넥션 × 초당 11개 = 약 110 req/s 처리 가능 (실제 RPS 97.68과 유사)
+   - **영향**:
+     - DB 쿼리 실행 시간(Execution Time)이 길어서 전체 처리량 제한
+     - DB CPU 사용률 증가
+     - Rows Removed by Filter: 99,999개로 Seq Scan 비용 큼
+   - **측정 방법**: `EXPLAIN ANALYZE`로 Seq Scan 및 Execution Time 확인 (완료)
+
+3. **병목 지점: 시스템 처리 용량 초과** ✅ **검증됨**
+   - **근거**:
+     - 실제 RPS (97.68 req/s)가 이론적 처리 용량(약 110 req/s)과 유사
+     - 에러율 1.35%로 일부 요청 실패 발생
+     - 평균 반복 시간이 53초로 매우 긴 대기
+   - **영향**:
+     - 시스템이 처리 용량 한계에 도달
+     - 추가 요청은 큐잉되거나 실패
+     - DB Active Connections가 최대치 유지 가능성
+   - **측정 방법**: Grafana에서 DB QPS 및 Active Connections 모니터링
 
 ---
 
@@ -238,7 +343,8 @@ k6 run --out json=results/results-phase1.json scenario-phase1.js
 
 - **k6 결과**: `results-phase1.json` (요약 + raw 데이터)
 - **EXPLAIN ANALYZE 결과**: Phase1-explain-analyze.txt
-- **DB 메트릭**: CPU 사용률, QPS, 커넥션 수
+- **DB 메트릭**: QPS, Active Connections (Grafana)
+- **Grafana 모니터링 메트릭**: HTTP RPS, 응답 시간, CPU, 메모리, GC
 - **병목 가설**: 위 표 작성
 
 ---

@@ -28,7 +28,7 @@
 
 ```bash
 cd k6-tests/test-data
-python generate-dataset.py --count 1000 --output step1-dataset.json
+python generate-dataset.py --count 100000 --output step1-dataset.json
 ```
 
 **옵션**:
@@ -39,7 +39,9 @@ python generate-dataset.py --count 1000 --output step1-dataset.json
 **권장 설정**:
 
 - 최소: `--count 1000` (Hot: 10개, Warm: 90개, Cold: 900개)
-- 권장: `--count 10000` (Hot: 100개, Warm: 900개, Cold: 9,000개)
+- 권장: `--count 100000` (Hot: 1,000개, Warm: 9,000개, Cold: 90,000개)
+
+> **참고**: 병목 현상을 명확히 확인하기 위해 데이터셋 크기를 100,000개로 권장합니다. Seq Scan 시 10,000개보다 훨씬 긴 실행 시간이 예상되어 인덱스 효과가 명확히 드러납니다.
 
 ### 생성된 데이터셋 구조
 

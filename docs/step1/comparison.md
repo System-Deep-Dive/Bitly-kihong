@@ -5,20 +5,24 @@
 | 항목                | Phase 1<br/>(OFF/OFF) | Phase 2<br/>(OFF/ON) | Phase 3<br/>(ON/ON) | Phase 2 효과 | Phase 3 효과 |
 | ------------------- | --------------------- | -------------------- | ------------------- | ------------ | ------------ |
 | **응답 시간**       |
-| p50 latency         | ? ms                  | ? ms                 | ? ms                | ?% 개선      | ?% 개선      |
-| p95 latency         | ? ms                  | ? ms                 | ? ms                | ?% 개선      | ?% 개선      |
-| p99 latency         | ? ms                  | ? ms                 | ? ms                | ?% 개선      | ?% 개선      |
+| p50 latency         | 348.94 ms             | ? ms                 | ? ms                | ?% 개선      | ?% 개선      |
+| p95 latency         | 11,175.93 ms          | ? ms                 | ? ms                | ?% 개선      | ?% 개선      |
+| p99 latency         | >1,000 ms             | ? ms                 | ? ms                | ?% 개선      | ?% 개선      |
+| **처리량**          |
+| RPS                 | 97.68                 | ?                    | ?                   | ?% 증가      | ?% 증가      |
 | **데이터베이스**    |
-| DB QPS              | ?                     | ?                    | ?                   | ?% 변화      | ?% 감소      |
-| DB CPU              | ?%                    | ?%                   | ?%                  | ?% 감소      | ?% 감소      |
-| Execution Time      | ? ms                  | ? ms                 | ? ms                | ?% 개선      | -            |
+| DB QPS              | ~97.68 (k6)           | ?                    | ?                   | ?% 변화      | ?% 감소      |
+|                     | Last 82.5, Max 124    | ?                    | ?                   |              |              |
+| Active Connections  | 최대 4개              | ?                    | ?                   | ?% 변화      | ?% 변화      |
+| Execution Time      | 86.340 ms             | ? ms                 | ? ms                | ?% 개선      | -            |
 | **캐시**            |
 | 캐시 히트율         | 0%                    | 0%                   | ?%                  | -            | -            |
 | Redis CPU           | -                     | -                    | ?%                  | -            | -            |
 | **EXPLAIN ANALYZE** |
 | Plan                | Seq Scan              | Index Scan           | Index Scan          | ✅           | -            |
-| Buffers (hit)       | ?                     | ?                    | ?                   | ?% 증가      | -            |
-| Buffers (read)      | ?                     | ?                    | ?                   | ?% 감소      | -            |
+| Buffers (hit)       | 1,032                 | ?                    | ?                   | ?% 증가      | -            |
+| Buffers (read)      | 0                     | ?                    | ?                   | ?% 감소      | -            |
+| Rows Removed        | 99,999                | ?                    | ?                   | ?% 감소      | -            |
 
 ---
 
