@@ -140,7 +140,7 @@ function getCategory(shortCode) {
 // 테스트 완료 후 리포트 생성
 export function handleSummary(data) {
     // Phase는 환경 변수로 지정 가능 (기본값: phase1)
-    const phase = __ENV.PHASE || 'phase1';
+    const phase = 'phase2';
     return {
         [`results/results-${phase}.json`]: JSON.stringify(data, null, 2),
     };

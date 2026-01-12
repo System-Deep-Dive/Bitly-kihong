@@ -98,14 +98,14 @@ PHASE=phase2 k6 run scenario-phase1.js
 
 ### 성능 지표 비교
 
-| 지표           | Phase 1 (인덱스 OFF) | Phase 2 (인덱스 ON) | 개선율 |
-| -------------- | -------------------- | ------------------- | ------ |
-| p50 latency    | ? ms                 | ? ms                | ?%     |
-| p95 latency    | ? ms                 | ? ms                | ?%     |
-| p99 latency    | ? ms                 | ? ms                | ?%     |
-| DB QPS         | ?                    | ?                   | ?%     |
-| DB CPU         | ?%                   | ?%                  | ?%     |
-| Execution Time | ? ms                 | ? ms                | ?%     |
+| 지표               | Phase 1 (인덱스 OFF) | Phase 2 (인덱스 ON) | 개선율        |
+| ------------------ | -------------------- | ------------------- | ------------- |
+| p50 latency        | 366.36 ms            | 297.79 ms           | -18.7%        |
+| p95 latency        | 11,062.87 ms         | 10,864.83 ms        | -1.8%         |
+| p99 latency        | >1,000 ms            | >1,000 ms           | -             |
+| DB QPS             | Last 82.8, Max 128   | Last 93.2, Max 128  | +12.6% (Last) |
+| Active Connections | 최대 10개            | 최대 1개            | -90%          |
+| Execution Time     | 86.340 ms            | ? ms                | ?%            |
 
 ### EXPLAIN ANALYZE 비교
 
@@ -135,9 +135,17 @@ PHASE=phase2 k6 run scenario-phase1.js
 
 **인덱스 효과**:
 
-- p95 latency: ? ms → ? ms (?% 개선)
-- DB CPU: ?% → ?% (?% 감소)
-- Execution Time: ? ms → ? ms (?% 개선)
+- **Active Connections: 10개 → 1개 (-90% 감소)** - 가장 명확한 개선 지표
+- p50 latency: 366.36 ms → 297.79 ms (-18.7% 개선)
+- p95 latency: 11,062.87 ms → 10,864.83 ms (-1.8% 개선)
+- DB QPS Last: 82.8 → 93.2 (+12.6% 증가)
+- DB QPS Max: 128 → 128 (동일)
+
+**핵심 발견**:
+
+- Active Connections이 90% 감소한 것이 인덱스 효과의 가장 명확한 지표입니다.
+- 쿼리 실행 시간 단축으로 커넥션 효율성이 대폭 향상되었습니다.
+- p50 latency는 18.7% 개선되었지만, p95는 1.8%만 개선되어 다른 병목이 존재함을 시사합니다.
 
 ---
 
