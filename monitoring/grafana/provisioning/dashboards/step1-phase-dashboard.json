@@ -199,7 +199,7 @@
               "uid": "PBFA97CFB590B2093"
             },
             "editorMode": "code",
-            "expr": "rate(http_server_requests_seconds_count{job=\"bitly-api\",uri=~\"/.*\"}[5m])",
+            "expr": "rate(http_server_requests_seconds_count{job=\"bitly-api\",uri=~\"/[^/]+$\"}[5m])",
             "instant": false,
             "legendFormat": "{{method}} {{uri}}",
             "range": true,
@@ -308,7 +308,7 @@
               "uid": "PBFA97CFB590B2093"
             },
             "editorMode": "code",
-            "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{job=\"bitly-api\",uri=~\"/.*\"}[5m]))",
+            "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{job=\"bitly-api\",uri=~\"/[^/]+$\"}[5m]))",
             "instant": false,
             "legendFormat": "p95",
             "range": true,
@@ -320,7 +320,7 @@
               "uid": "PBFA97CFB590B2093"
             },
             "editorMode": "code",
-            "expr": "histogram_quantile(0.50, rate(http_server_requests_seconds_bucket{job=\"bitly-api\",uri=~\"/.*\"}[5m]))",
+            "expr": "histogram_quantile(0.50, rate(http_server_requests_seconds_bucket{job=\"bitly-api\",uri=~\"/[^/]+$\"}[5m]))",
             "instant": false,
             "legendFormat": "p50",
             "range": true,
@@ -332,7 +332,7 @@
               "uid": "PBFA97CFB590B2093"
             },
             "editorMode": "code",
-            "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket{job=\"bitly-api\",uri=~\"/.*\"}[5m]))",
+            "expr": "histogram_quantile(0.99, rate(http_server_requests_seconds_bucket{job=\"bitly-api\",uri=~\"/[^/]+$\"}[5m]))",
             "instant": false,
             "legendFormat": "p99",
             "range": true,
