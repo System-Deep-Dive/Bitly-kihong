@@ -1,33 +1,5 @@
 services:
-  app:
-    image: eclipse-temurin:21-jre
-    depends_on:
-      - postgres
-      - redis
-    deploy:
-      replicas: 1
-      resources:
-        limits:
-          memory: 1G
-        reservations:
-          memory: 512M
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-    working_dir: /app
-    volumes:
-      - ./build/libs/bitly-good-0.0.1-SNAPSHOT.jar:/app/app.jar
-    command: java -jar /app/app.jar
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_DATASOURCE_USERNAME=user
-      - SPRING_DATASOURCE_PASSWORD=password
-    ports:
-      - "8080:8080"
-    networks:
-      - monitoring
-
+ 
 
   postgres:
     image: postgres:13
@@ -58,21 +30,11 @@ services:
           memory: 1G
         reservations:
           memory: 512M
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
     ports:
       - "6380:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes --maxmemory 800m --maxmemory-policy allkeys-lru
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
     networks:
       - monitoring
 
@@ -195,4 +157,4 @@ volumes:
 
 networks:
   monitoring:
-    driver: overlay
+    driver: bridge
