@@ -202,8 +202,8 @@ public class UrlService {
         // 캐시 서비스를 통한 조회 (캐시 우선)
         return urlCacheService.getOriginalUrl(shortCode)
                 .orElseThrow(() -> {
-                    // 단축 코드가 존재하지 않는 경우 예외 발생
-                    log.warn("No original URL found for short code: {}", shortCode);
+                    // 단축 코드가 존재하지 않는 경우 예외 발생 (404는 정상적인 응답이므로 DEBUG 레벨)
+                    log.debug("No original URL found for short code: {}", shortCode);
                     return new IllegalArgumentException("Invalid short url");
                 });
 

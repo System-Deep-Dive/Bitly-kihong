@@ -95,11 +95,11 @@ public class UrlCleanupService {
     public void monitorSystemHealth() {
         try {
             double hitRate = urlCacheService.getCacheHitRate();
-            log.info("Cache hit rate: {:.2f}%", hitRate * 100);
+            log.info("Cache hit rate: {}%", String.format("%.2f", hitRate * 100));
 
             // 캐시 히트율이 너무 낮으면 경고
             if (hitRate < 0.5) {
-                log.warn("Low cache hit rate detected: {:.2f}%", hitRate * 100);
+                log.warn("Low cache hit rate detected: {}%", String.format("%.2f", hitRate * 100));
             }
 
         } catch (RedisConnectionFailureException e) {
