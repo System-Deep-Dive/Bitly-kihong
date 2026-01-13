@@ -59,16 +59,16 @@ public class UrlCacheService {
 
         try {
             // 1단계: 캐시에서 조회
-            log.info("Checking cache for short code: {}", shortCode);
+            log.debug("Checking cache for short code: {}", shortCode);
             String cachedUrl = redisTemplate.opsForValue().get(cacheKey);
             if (cachedUrl != null) {
-                log.info("Cache hit for short code: {}", shortCode);
+                log.debug("Cache hit for short code: {}", shortCode);
                 incrementCacheHitCount();
                 return Optional.of(cachedUrl);
             }
 
             // 2단계: 캐시 미스 - 데이터베이스에서 조회
-            log.info("Cache miss for short code: {}", shortCode);
+            log.debug("Cache miss for short code: {}", shortCode);
             incrementCacheMissCount();
 
             Optional<Url> urlOpt = urlRepository.findByShortUrl(shortCode);
@@ -86,14 +86,6 @@ public class UrlCacheService {
 
                 // 메타데이터도 캐시에 저장
                 cacheUrlMetadata(shortCode, url);
-
-                // 캐시 저장 확인 (저장 실패 시 경고)
-                String cachedValue = redisTemplate.opsForValue().get(URL_CACHE_PREFIX + shortCode);
-                if (cachedValue == null) {
-                    log.warn(
-                            "Cache storage verification failed for short code: {} - Key not found after cacheUrl() call",
-                            shortCode);
-                }
 
                 return Optional.of(url.getOriginalUrl());
             }
@@ -116,7 +108,7 @@ public class UrlCacheService {
      * @param originalUrl 원본 URL
      */
     public void cacheUrl(String shortCode, String originalUrl) {
-        log.info("cacheUrl() called for shortCode: {}", shortCode);
+        log.debug("cacheUrl() called for shortCode: {}", shortCode);
         String cacheKey = URL_CACHE_PREFIX + shortCode;
 
         // TTL 값 검증
@@ -128,15 +120,6 @@ public class UrlCacheService {
 
         try {
             redisTemplate.opsForValue().set(cacheKey, originalUrl, Duration.ofSeconds(ttlSeconds));
-
-            // 저장 성공 여부 확인
-            String savedValue = redisTemplate.opsForValue().get(cacheKey);
-            if (savedValue != null && savedValue.equals(originalUrl)) {
-                log.info("URL cached successfully: {} -> {} (TTL: {} seconds)", shortCode, originalUrl, ttlSeconds);
-            } else {
-                log.warn("URL cache verification failed: {} - Key exists but value mismatch or key not found",
-                        shortCode);
-            }
         } catch (Exception e) {
             log.error("Error caching URL: {} (Exception type: {}, Message: {})",
                     shortCode, e.getClass().getSimpleName(), e.getMessage(), e);
