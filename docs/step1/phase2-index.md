@@ -100,52 +100,74 @@ PHASE=phase2 k6 run scenario-phase1.js
 
 | 지표               | Phase 1 (인덱스 OFF) | Phase 2 (인덱스 ON) | 개선율        |
 | ------------------ | -------------------- | ------------------- | ------------- |
-| p50 latency        | 366.36 ms            | 297.79 ms           | -18.7%        |
-| p95 latency        | 11,062.87 ms         | 10,864.83 ms        | -1.8%         |
-| p99 latency        | >1,000 ms            | >1,000 ms           | -             |
+| p50 latency        | 121 ms               | 104 ms              | -14.0%        |
+| p95 latency        | 698 ms               | 655 ms              | -6.2%         |
 | DB QPS             | Last 82.8, Max 128   | Last 93.2, Max 128  | +12.6% (Last) |
 | Active Connections | 최대 10개            | 최대 1개            | -90%          |
-| Execution Time     | 86.340 ms            | ? ms                | ?%            |
+| Execution Time     | 86.340 ms            | 0.028 ms            | -99.97%       |
+
+**참고**:
+
+- p50, p95 latency는 서버 응답 시간(`http_req_waiting`) 기준입니다.
+- Execution Time은 EXPLAIN ANALYZE 결과입니다.
 
 ### EXPLAIN ANALYZE 비교
 
 **Phase 1 결과**:
 
 ```
-[Phase 1의 EXPLAIN ANALYZE 결과 붙여넣기]
+Seq Scan on public.url u  (cost=0.02..2280.77 rows=1 width=63) (actual time=0.177..86.177 rows=1 loops=1)
+   Output: u.id, u.original_url, u.short_url, u.expiration_date, u.created_at
+   Filter: ((u.short_url)::text = ($0)::text)
+   Rows Removed by Filter: 99999
+   Buffers: shared hit=1032
+Planning Time: 3.236 ms
+Execution Time: 86.340 ms
 ```
 
 **Phase 2 결과**:
 
 ```
-[Phase 2의 EXPLAIN ANALYZE 결과 붙여넣기]
+Index Scan using idx_url_short_url on public.url  (cost=0.29..8.31 rows=1 width=63) (actual time=0.016..0.017 rows=0 loops=1)
+   Output: id, created_at, expiration_date, original_url, short_url
+   Index Cond: ((url.short_url)::text = '7NT'::text)
+   Buffers: shared hit=2
+Planning Time: 0.054 ms
+Execution Time: 0.028 ms
 ```
 
 **비교 분석**:
 
-| 항목                  | Phase 1  | Phase 2    | 변화    |
-| --------------------- | -------- | ---------- | ------- |
-| Plan                  | Seq Scan | Index Scan | ✅ 변경 |
-| Execution Time        | ? ms     | ? ms       | ?% 감소 |
-| Buffers (shared hit)  | ?        | ?          | ?% 증가 |
-| Buffers (shared read) | ?        | ?          | ?% 감소 |
-| Rows scanned          | ?        | ?          | ?% 감소 |
+| 항목                 | Phase 1   | Phase 2    | 변화         |
+| -------------------- | --------- | ---------- | ------------ |
+| Plan                 | Seq Scan  | Index Scan | ✅ 변경      |
+| Execution Time       | 86.340 ms | 0.028 ms   | -99.97% 감소 |
+| Planning Time        | 3.236 ms  | 0.054 ms   | -98.3% 감소  |
+| Buffers (shared hit) | 1,032     | 2          | -99.8% 감소  |
+| Rows Removed         | 99,999    | 0          | -100% 감소   |
+
+**핵심 개선**:
+
+- Execution Time이 86.340ms에서 0.028ms로 **99.97% 감소**하여 쿼리 실행 시간이 거의 즉시 완료됨
+- Buffers 사용량이 1,032에서 2로 **99.8% 감소**하여 메모리 효율성 대폭 향상
+- Rows Removed가 99,999에서 0으로 **100% 감소**하여 불필요한 스캔 완전 제거
 
 ### 인덱스 효과 결론
 
 **인덱스 효과**:
 
 - **Active Connections: 10개 → 1개 (-90% 감소)** - 가장 명확한 개선 지표
-- p50 latency: 366.36 ms → 297.79 ms (-18.7% 개선)
-- p95 latency: 11,062.87 ms → 10,864.83 ms (-1.8% 개선)
-- DB QPS Last: 82.8 → 93.2 (+12.6% 증가)
-- DB QPS Max: 128 → 128 (동일)
+- **서버 응답 시간 (http_req_waiting)**:
+  - p50 latency: 121 ms → 104 ms (-14.0% 개선)
+  - p95 latency: 698 ms → 655 ms (-6.2% 개선)
+- **DB QPS**: Last 82.8 → 93.2 (+12.6% 증가), Max 128 → 128 (동일)
+- **Execution Time**: 86.340 ms → 0.028 ms (-99.97% 개선, EXPLAIN ANALYZE 기준)
 
 **핵심 발견**:
 
 - Active Connections이 90% 감소한 것이 인덱스 효과의 가장 명확한 지표입니다.
-- 쿼리 실행 시간 단축으로 커넥션 효율성이 대폭 향상되었습니다.
-- p50 latency는 18.7% 개선되었지만, p95는 1.8%만 개선되어 다른 병목이 존재함을 시사합니다.
+- 쿼리 실행 시간 단축(99.97% 개선)으로 커넥션 효율성이 대폭 향상되었습니다.
+- 서버 응답 시간도 p50 14.0%, p95 6.2% 개선되었으나, 여전히 다른 병목이 존재함을 시사합니다.
 
 ---
 
