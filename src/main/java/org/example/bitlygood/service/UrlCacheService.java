@@ -34,14 +34,10 @@ public class UrlCacheService {
 
     // 캐시 키 접두사
     private static final String URL_CACHE_PREFIX = "url:";
-    private static final String URL_METADATA_PREFIX = "url_meta:";
 
     // 캐시 TTL 설정 (application.properties에서 주입)
     @Value("${app.cache.url.ttl:3600}") // 기본 1시간
     private long urlCacheTtlSeconds;
-
-    @Value("${app.cache.url.metadata.ttl:86400}") // 기본 24시간
-    private long urlMetadataTtlSeconds;
 
     /**
      * 단축코드로 원본 URL을 조회합니다. (캐시 우선)
@@ -84,9 +80,6 @@ public class UrlCacheService {
                 // 3단계: 캐시에 저장
                 cacheUrl(shortCode, url.getOriginalUrl());
 
-                // 메타데이터도 캐시에 저장
-                cacheUrlMetadata(shortCode, url);
-
                 return Optional.of(url.getOriginalUrl());
             }
 
@@ -127,39 +120,15 @@ public class UrlCacheService {
     }
 
     /**
-     * URL 메타데이터를 캐시에 저장합니다.
-     * 
-     * @param shortCode 단축코드
-     * @param url       URL 엔티티
-     */
-    private void cacheUrlMetadata(String shortCode, Url url) {
-        String metadataKey = URL_METADATA_PREFIX + shortCode;
-
-        try {
-            // 메타데이터를 JSON 형태로 저장 (간단한 문자열로 구현)
-            String metadata = String.format("createdAt:%s,expirationDate:%s",
-                    url.getCreatedAt(),
-                    url.getExpirationDate());
-
-            redisTemplate.opsForValue().set(metadataKey, metadata, Duration.ofSeconds(urlMetadataTtlSeconds));
-            log.debug("URL metadata cached: {}", shortCode);
-        } catch (Exception e) {
-            log.error("Error caching URL metadata: {}", shortCode, e);
-        }
-    }
-
-    /**
      * 캐시에서 URL을 제거합니다.
      * 
      * @param shortCode 제거할 단축코드
      */
     public void evictUrl(String shortCode) {
         String cacheKey = URL_CACHE_PREFIX + shortCode;
-        String metadataKey = URL_METADATA_PREFIX + shortCode;
 
         try {
             redisTemplate.delete(cacheKey);
-            redisTemplate.delete(metadataKey);
             log.debug("URL evicted from cache: {}", shortCode);
         } catch (Exception e) {
             log.error("Error evicting URL from cache: {}", shortCode, e);
