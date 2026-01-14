@@ -223,4 +223,4 @@ PgBouncer는 연결 풀 경합 문제를 성공적으로 해소했지만, 전반
 
 ## 다음 단계
 
-Phase 5 완료 후 → [종합 비교 분석](./comparison.md) 진행
+Phase 5 완료 후 → [Phase 6: 쿼리 최적화](./phase6-query-optimization.md) 진행
