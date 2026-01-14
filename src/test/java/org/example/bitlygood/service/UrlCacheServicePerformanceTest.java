@@ -45,7 +45,6 @@ class UrlCacheServicePerformanceTest {
     void setUp() {
         // 캐시 TTL 설정 주입
         ReflectionTestUtils.setField(urlCacheService, "urlCacheTtlSeconds", 3600L);
-        ReflectionTestUtils.setField(urlCacheService, "urlMetadataTtlSeconds", 86400L);
     }
 
     @Test
@@ -98,7 +97,6 @@ class UrlCacheServicePerformanceTest {
 
         // 캐시에 저장되었는지 확인
         verify(valueOperations).set(eq("url:" + shortCode), eq(originalUrl), any());
-        verify(valueOperations).set(eq("url_meta:" + shortCode), anyString(), any());
     }
 
     @Test
@@ -162,7 +160,6 @@ class UrlCacheServicePerformanceTest {
 
         // then
         verify(redisTemplate).delete("url:" + shortCode);
-        verify(redisTemplate).delete("url_meta:" + shortCode);
     }
 
     @Test

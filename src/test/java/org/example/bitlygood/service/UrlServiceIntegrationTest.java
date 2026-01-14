@@ -1,6 +1,11 @@
 package org.example.bitlygood.service;
 
 import org.junit.jupiter.api.AfterEach;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,8 +14,6 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Redis 카운터를 사용한 URL 단축 서비스 통합 테스트
@@ -33,6 +36,9 @@ class UrlServiceIntegrationTest {
 
     @Autowired
     private UrlCacheService urlCacheService;
+
+    @Autowired
+    private Base62 base62;
 
     @AfterEach
     void tearDown() {
@@ -80,7 +86,6 @@ class UrlServiceIntegrationTest {
         assertEquals(2L, counter2);
 
         // Base62 인코딩이 올바르게 동작하는지 확인
-        Base62 base62 = new Base62();
         String encoded1 = base62.encode(counter1);
         String encoded2 = base62.encode(counter2);
 
@@ -216,7 +221,6 @@ class UrlServiceIntegrationTest {
         // (Redis 카운터의 순차성 보장)
         for (int i = 1; i < shortCodes.length; i++) {
             // Base62로 인코딩된 값이 순차적으로 증가하는지 확인
-            Base62 base62 = new Base62();
             long currentDecoded = base62.decode(shortCodes[i]);
             long previousDecoded = base62.decode(shortCodes[i - 1]);
 
