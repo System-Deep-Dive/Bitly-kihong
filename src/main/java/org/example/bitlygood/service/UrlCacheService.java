@@ -3,7 +3,6 @@ package org.example.bitlygood.service;
 import java.time.Duration;
 import java.util.Optional;
 
-import org.example.bitlygood.domain.Url;
 import org.example.bitlygood.repository.UrlRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -67,20 +66,14 @@ public class UrlCacheService {
             log.debug("Cache miss for short code: {}", shortCode);
             incrementCacheMissCount();
 
-            Optional<Url> urlOpt = urlRepository.findByShortUrl(shortCode);
-            if (urlOpt.isPresent()) {
-                Url url = urlOpt.get();
-
-                // 만료 확인
-                if (url.isExpired()) {
-                    log.warn("URL has expired: {}", shortCode);
-                    return Optional.empty();
-                }
+            Optional<String> originalUrlOpt = urlRepository.findOriginalUrlByShortUrlNotExpired(shortCode);
+            if (originalUrlOpt.isPresent()) {
+                String originalUrl = originalUrlOpt.get();
 
                 // 3단계: 캐시에 저장
-                cacheUrl(shortCode, url.getOriginalUrl());
+                cacheUrl(shortCode, originalUrl);
 
-                return Optional.of(url.getOriginalUrl());
+                return Optional.of(originalUrl);
             }
 
             return Optional.empty();
@@ -88,9 +81,7 @@ public class UrlCacheService {
         } catch (Exception e) {
             log.error("Error retrieving URL from cache for short code: {}", shortCode, e);
             // 캐시 오류 시 데이터베이스에서 직접 조회
-            return urlRepository.findByShortUrl(shortCode)
-                    .filter(url -> !url.isExpired())
-                    .map(Url::getOriginalUrl);
+            return urlRepository.findOriginalUrlByShortUrlNotExpired(shortCode);
         }
     }
 
