@@ -8,6 +8,9 @@ build/
 k6-tests/test-data/*.json
 k6-tests/results/results-*.json
 
+### PgBouncer ###
+pgbouncer/userlist.txt
+
 ### Bloop ###
 .bloop/
 
