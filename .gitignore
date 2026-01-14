@@ -50,3 +50,6 @@ out/
 *.pem
 results.json
 results-fast.json
+
+### Backups ###
+backups/

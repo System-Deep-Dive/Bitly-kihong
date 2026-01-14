@@ -2,10 +2,10 @@ services:
   app:
     image: eclipse-temurin:21-jre
     depends_on:
-      - postgres
+      - pgbouncer
       - redis
     deploy:
-      replicas: 1
+      replicas: 10
       resources:
         limits:
           memory: 1G
@@ -21,6 +21,7 @@ services:
     command: java -jar /app/app.jar
     environment:
       - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://pgbouncer:6432/bitly
       - SPRING_DATASOURCE_USERNAME=user
       - SPRING_DATASOURCE_PASSWORD=password
     ports:
@@ -43,10 +44,33 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_SHARED_BUFFERS: 512MB
       POSTGRES_EFFECTIVE_CACHE_SIZE: 1536MB
+    command: >
+      postgres
+      -c max_connections=500
+      -c shared_buffers=512MB
+      -c effective_cache_size=1536MB
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - monitoring
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    depends_on:
+      - postgres
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+    ports:
+      - "6432:6432"
+    volumes:
+      - ./pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
     networks:
       - monitoring
 
