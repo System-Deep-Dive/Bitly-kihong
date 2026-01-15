@@ -210,6 +210,8 @@ services:
         condition: on-failure
         delay: 5s
         max_attempts: 3
+    env_file:
+      - .env
     ports:
       - "${ZIPKIN_HOST_PORT}:9411"
     environment:
@@ -218,11 +220,11 @@ services:
     networks:
       - monitoring
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9411/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9411/health"]
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 30s
   # ============================
 
 volumes:
