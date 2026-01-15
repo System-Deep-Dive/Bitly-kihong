@@ -20,7 +20,7 @@
 /**
  * 단축코드로 원본 URL만 조회합니다. (최적화된 쿼리)
  * 만료 체크도 DB 레벨에서 수행합니다.
- * 
+ *
  * @param shortUrl 단축코드
  * @return 원본 URL (Optional)
  */
@@ -71,8 +71,8 @@ if (originalUrlOpt.isPresent()) {
 
 ```sql
 -- JPA가 생성하는 쿼리 (전체 엔티티 조회)
-SELECT id, created_at, expiration_date, original_url, short_url 
-FROM url 
+SELECT id, created_at, expiration_date, original_url, short_url
+FROM url
 WHERE short_url = :shortUrl;
 
 -- Java 레벨에서 만료 체크
@@ -85,9 +85,9 @@ if (url.isExpired()) {
 
 ```sql
 -- 네이티브 쿼리 (필요한 컬럼만 조회)
-SELECT original_url 
-FROM url 
-WHERE short_url = :shortUrl 
+SELECT original_url
+FROM url
+WHERE short_url = :shortUrl
   AND (expiration_date IS NULL OR expiration_date > NOW());
 ```
 
@@ -108,9 +108,9 @@ WHERE short_url = :shortUrl
 
 ```sql
 EXPLAIN (ANALYZE, BUFFERS, VERBOSE)
-SELECT original_url 
-FROM url 
-WHERE short_url = '7nt' 
+SELECT original_url
+FROM url
+WHERE short_url = '7nt'
   AND (expiration_date IS NULL OR expiration_date > NOW());
 ```
 
@@ -135,12 +135,12 @@ Index Scan using idx_url_short_url on public.url
 
 **최적화 전/후 비교**:
 
-| 항목 | 최적화 전 | 최적화 후 | 개선 효과 |
-|------|----------|----------|----------|
-| 조회 컬럼 수 | 5개 (전체 엔티티) | 1개 (`original_url`) | 네트워크 전송량 80% 감소 |
-| 엔티티 매핑 | 필요 | 불필요 | 객체 생성 오버헤드 제거 |
-| 만료 체크 위치 | Java 레벨 | DB 레벨 | 불필요한 데이터 전송 방지 |
-| 실행 시간 | ~0.1 ms (추정) | 0.029 ms | 약 70% 개선 |
+| 항목           | 최적화 전         | 최적화 후            | 개선 효과                 |
+| -------------- | ----------------- | -------------------- | ------------------------- |
+| 조회 컬럼 수   | 5개 (전체 엔티티) | 1개 (`original_url`) | 네트워크 전송량 80% 감소  |
+| 엔티티 매핑    | 필요              | 불필요               | 객체 생성 오버헤드 제거   |
+| 만료 체크 위치 | Java 레벨         | DB 레벨              | 불필요한 데이터 전송 방지 |
+| 실행 시간      | ~0.1 ms (추정)    | 0.029 ms             | 약 70% 개선               |
 
 ---
 
@@ -169,18 +169,18 @@ k6 run --out json=results/results-phase6.json scenario-phase1.js
 ### 성능 지표 요약
 
 | 지표                   | Phase 5 (Scale-out + PgBouncer) | Phase 6 (쿼리 최적화) | 개선율 (5→6) |
-| ---------------------- | -------------------------------- | --------------------- | ------------ |
+| ---------------------- | ------------------------------- | --------------------- | ------------ |
 | **응답 시간**          |
-| p50 latency            | 790 ms                           | 738.3 ms              | -6.5% 개선   |
-| p95 latency            | 4,395 ms                         | 4,095.8 ms            | -6.8% 개선   |
-| 평균 응답 시간         | 1,310 ms                         | 1,252.6 ms            | -4.4% 개선   |
+| p50 latency            | 790 ms                          | 738.3 ms              | -6.5% 개선   |
+| p95 latency            | 4,395 ms                        | 4,095.8 ms            | -6.8% 개선   |
+| 평균 응답 시간         | 1,310 ms                        | 1,252.6 ms            | -4.4% 개선   |
 | **처리량**             |
-| RPS                    | 713.0 req/s                      | 724.5 req/s           | +1.6% 증가   |
-| 요청 실패율            | 2.00%                            | 2.00%                 | 변화 없음    |
+| RPS                    | 713.0 req/s                     | 724.5 req/s           | +1.6% 증가   |
+| 요청 실패율            | 2.00%                           | 2.00%                 | 변화 없음    |
 | **리디렉션 지연**      |
-| redirect_latency p(95) | 9,376 ms                         | 8,964 ms              | -4.4% 개선   |
+| redirect_latency p(95) | 9,376 ms                        | 8,964 ms              | -4.4% 개선   |
 | **연결 관련**          |
-| http_req_blocked p(95) | 883 ms                           | 839.3 ms              | -4.9% 개선   |
+| http_req_blocked p(95) | 883 ms                          | 839.3 ms              | -4.9% 개선   |
 
 **참고**:
 
