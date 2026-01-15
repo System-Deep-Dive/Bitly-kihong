@@ -19,11 +19,14 @@ services:
     working_dir: /app
     volumes:
       - ./build/libs/bitly-good-0.0.1-SNAPSHOT.jar:/app/app.jar
-    command: java -jar /app/app.jar
+    command: java -jar /app/app.jar --spring.profiles.active=docker
     env_file:
       - .env
     ports:
-      - "${APP_HOST_PORT}:8080"
+      - target: 8080
+        published: "${APP_HOST_PORT}"
+        protocol: tcp
+        mode: ingress
     networks:
       - monitoring
 

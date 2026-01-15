@@ -22,7 +22,7 @@ output "environment_variables" {
     APP_DOMAIN = var.app_domain
     
     # Grafana
-    GRAFANA_ADMIN_PASSWORD = "secret:grafana_admin_password"
+    GRAFANA_ADMIN_PASSWORD = var.grafana_admin_password
     
     # InfluxDB
     INFLUXDB_DB              = var.influxdb_db
@@ -31,7 +31,7 @@ output "environment_variables" {
     
     # Exporters
     REDIS_EXPORTER_ADDR             = "redis://redis:6379"
-    POSTGRES_EXPORTER_DATA_SOURCE_NAME = "postgresql://${var.postgres_user}:secret:postgres_password@postgres:5432/${var.postgres_db}?sslmode=disable"
+    POSTGRES_EXPORTER_DATA_SOURCE_NAME = "postgresql://${var.postgres_user}:${var.postgres_password}@postgres:5432/${var.postgres_db}?sslmode=disable"
   }
   sensitive = false
 }
