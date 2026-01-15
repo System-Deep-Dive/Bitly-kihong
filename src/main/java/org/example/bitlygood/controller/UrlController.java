@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import io.micrometer.observation.annotation.Observed;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,10 +23,12 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @Tag(name = "URL", description = "URL 단축 및 리다이렉션 API")
+@Observed(name = "url.controller", contextualName = "url-controller")
 public class UrlController {
 
     private final UrlService urlService;
 
+    @Observed(name = "url.controller.createShortUrl", contextualName = "create-short-url-endpoint")
     @Operation(summary = "URL 단축 생성", description = "원본 URL을 단축 URL로 변환합니다. 사용자 지정 alias와 만료일을 설정할 수 있습니다.")
     @ApiCreated
     @PostMapping("/urls")
@@ -46,6 +49,7 @@ public class UrlController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response.getShortCode());
     }
 
+    @Observed(name = "url.controller.redirect", contextualName = "redirect-endpoint")
     @Operation(summary = "URL 리다이렉션", description = "단축 URL을 원본 URL로 리다이렉션합니다.")
     @ApiRedirect
     @GetMapping("/{shortUrl}")

@@ -1,5 +1,6 @@
 package org.example.bitlygood.service;
 
+import io.micrometer.observation.annotation.Observed;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @RequiredArgsConstructor
+@Observed(name = "redis.counter", contextualName = "redis-counter-service")
 public class RedisCounterService {
 
     // Redis와 상호작용하기 위한 템플릿 객체
@@ -41,6 +43,7 @@ public class RedisCounterService {
      * 
      * @return 증가된 카운터 값 (최초 호출 시 1, 이후 순차적으로 증가)
      */
+    @Observed(name = "redis.counter.getNextCounter", contextualName = "redis-incr-counter")
     public long getNextCounter() {
         Long next = redisTemplate.opsForValue().increment(COUNTER_KEY);
         if (next == null) {

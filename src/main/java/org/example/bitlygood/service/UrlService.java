@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.micrometer.observation.annotation.Observed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -44,6 +45,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Observed(name = "url.service", contextualName = "url-service")
 public class UrlService {
 
     // URL 데이터 저장소 (JPA Repository)
@@ -87,6 +89,7 @@ public class UrlService {
      * @param originalUrl 단축할 원본 URL (예: "https://www.example.com/very/long/path")
      * @return 생성된 단축 코드 (예: "1A2B3C")
      */
+    @Observed(name = "url.service.createShortUrl", contextualName = "create-short-url")
     @Transactional
     public String createShortUrl(String originalUrl) {
         if (originalUrl == null || originalUrl.isBlank()) {
@@ -122,6 +125,7 @@ public class UrlService {
      * @return 생성된 단축 URL 정보
      * @throws IllegalArgumentException 잘못된 요청 데이터인 경우
      */
+    @Observed(name = "url.service.createShortUrl", contextualName = "create-short-url-with-alias")
     @Transactional
     public CreateUrlResponse createShortUrl(CreateUrlRequest request) {
         // 입력값 검증
@@ -196,6 +200,7 @@ public class UrlService {
      * @return 해당하는 원본 URL (예: "https://www.example.com/very/long/path")
      * @throws IllegalArgumentException 단축 코드가 존재하지 않는 경우
      */
+    @Observed(name = "url.service.getOriginalUrl", contextualName = "get-original-url")
     public String getOriginalUrl(String shortCode) {
         log.debug("Retrieving original URL for short code: {}", shortCode);
 

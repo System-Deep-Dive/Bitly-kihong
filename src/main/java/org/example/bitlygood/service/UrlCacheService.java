@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import io.micrometer.observation.annotation.Observed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -26,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Observed(name = "url.cache", contextualName = "url-cache-service")
 public class UrlCacheService {
 
     private final RedisTemplate<String, String> redisTemplate;
@@ -49,6 +51,7 @@ public class UrlCacheService {
      * @param shortCode 조회할 단축코드
      * @return 원본 URL (Optional)
      */
+    @Observed(name = "url.cache.getOriginalUrl", contextualName = "cache-get-url")
     public Optional<String> getOriginalUrl(String shortCode) {
         String cacheKey = URL_CACHE_PREFIX + shortCode;
 
@@ -91,6 +94,7 @@ public class UrlCacheService {
      * @param shortCode   단축코드
      * @param originalUrl 원본 URL
      */
+    @Observed(name = "url.cache.cacheUrl", contextualName = "cache-set-url")
     public void cacheUrl(String shortCode, String originalUrl) {
         log.debug("cacheUrl() called for shortCode: {}", shortCode);
         String cacheKey = URL_CACHE_PREFIX + shortCode;
