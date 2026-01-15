@@ -15,13 +15,16 @@ Step 1 Phase별 테스트 데이터셋 생성 스크립트
 
 import argparse
 import json
+import os
 import random
 import requests
 import sys
 from typing import List, Dict
 from datetime import datetime
 
-BASE_URL = "http://localhost:8080"
+# BASE_URL은 환경 변수로 오버라이드 가능 (기본값: http://localhost:8080)
+# 예: BASE_URL=http://localhost:18080 python generate-dataset.py
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8080")
 API_ENDPOINT = f"{BASE_URL}/urls"
 
 
