@@ -2,7 +2,17 @@ HELP.md
 .gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
+.metals
 
+### k6 tests ###
+k6-tests/test-data/*.json
+k6-tests/results/results-*.json
+
+### PgBouncer ###
+pgbouncer/userlist.txt
+
+### Bloop ###
+.bloop/
 
 ### STS ###
 .apt_generated
@@ -37,9 +47,14 @@ out/
 ### Environment & secrets ###
 .env
 .env.*
+!.env.example
 *.env
+!*.env.example
 *.secret
 *.key
 *.pem
 results.json
 results-fast.json
+
+### Backups ###
+backups/

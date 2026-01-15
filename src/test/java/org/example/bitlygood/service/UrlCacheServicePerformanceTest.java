@@ -1,24 +1,25 @@
 package org.example.bitlygood.service;
 
-import org.example.bitlygood.domain.Url;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import org.example.bitlygood.repository.UrlRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.time.LocalDateTime;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 /**
  * UrlCacheService 성능 테스트
@@ -45,7 +46,6 @@ class UrlCacheServicePerformanceTest {
     void setUp() {
         // 캐시 TTL 설정 주입
         ReflectionTestUtils.setField(urlCacheService, "urlCacheTtlSeconds", 3600L);
-        ReflectionTestUtils.setField(urlCacheService, "urlMetadataTtlSeconds", 86400L);
     }
 
     @Test
@@ -72,7 +72,7 @@ class UrlCacheServicePerformanceTest {
         assertThat(durationMs).isLessThan(1);
 
         // 데이터베이스 호출이 없어야 함
-        verify(urlRepository, never()).findByShortUrl(anyString());
+        verify(urlRepository, never()).findOriginalUrlByShortUrlNotExpired(anyString());
     }
 
     @Test
@@ -82,12 +82,9 @@ class UrlCacheServicePerformanceTest {
         String shortCode = "test456";
         String originalUrl = "https://www.example.com";
 
-        Url url = new Url(originalUrl);
-        url.setShortUrl(shortCode);
-
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("url:" + shortCode)).thenReturn(null);
-        when(urlRepository.findByShortUrl(shortCode)).thenReturn(Optional.of(url));
+        when(urlRepository.findOriginalUrlByShortUrlNotExpired(shortCode)).thenReturn(Optional.of(originalUrl));
 
         // when
         Optional<String> result = urlCacheService.getOriginalUrl(shortCode);
@@ -98,7 +95,6 @@ class UrlCacheServicePerformanceTest {
 
         // 캐시에 저장되었는지 확인
         verify(valueOperations).set(eq("url:" + shortCode), eq(originalUrl), any());
-        verify(valueOperations).set(eq("url_meta:" + shortCode), anyString(), any());
     }
 
     @Test
@@ -106,14 +102,11 @@ class UrlCacheServicePerformanceTest {
     void getOriginalUrl_ExpiredUrl_ReturnsEmpty() {
         // given
         String shortCode = "expired123";
-        String originalUrl = "https://www.example.com";
-
-        Url expiredUrl = new Url(originalUrl, LocalDateTime.now().minusDays(1));
-        expiredUrl.setShortUrl(shortCode);
 
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("url:" + shortCode)).thenReturn(null);
-        when(urlRepository.findByShortUrl(shortCode)).thenReturn(Optional.of(expiredUrl));
+        // DB 레벨에서 만료 체크가 이루어지므로 빈 Optional 반환
+        when(urlRepository.findOriginalUrlByShortUrlNotExpired(shortCode)).thenReturn(Optional.empty());
 
         // when
         Optional<String> result = urlCacheService.getOriginalUrl(shortCode);
@@ -162,7 +155,6 @@ class UrlCacheServicePerformanceTest {
 
         // then
         verify(redisTemplate).delete("url:" + shortCode);
-        verify(redisTemplate).delete("url_meta:" + shortCode);
     }
 
     @Test
@@ -172,12 +164,9 @@ class UrlCacheServicePerformanceTest {
         String shortCode = "fallback123";
         String originalUrl = "https://www.example.com";
 
-        Url url = new Url(originalUrl);
-        url.setShortUrl(shortCode);
-
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("url:" + shortCode)).thenThrow(new RuntimeException("Redis error"));
-        when(urlRepository.findByShortUrl(shortCode)).thenReturn(Optional.of(url));
+        when(urlRepository.findOriginalUrlByShortUrlNotExpired(shortCode)).thenReturn(Optional.of(originalUrl));
 
         // when
         Optional<String> result = urlCacheService.getOriginalUrl(shortCode);
@@ -187,6 +176,6 @@ class UrlCacheServicePerformanceTest {
         assertThat(result.get()).isEqualTo(originalUrl);
 
         // Redis 오류 시에도 데이터베이스에서 정상 조회되어야 함
-        verify(urlRepository).findByShortUrl(shortCode);
+        verify(urlRepository).findOriginalUrlByShortUrlNotExpired(shortCode);
     }
 }

@@ -24,3 +24,11 @@ datasources:
       httpMode: GET
       version: InfluxQL
     editable: true
+
+  # === Zipkin 트레이싱 데이터소스 ===
+  - name: Zipkin
+    type: zipkin
+    uid: zipkin
+    access: proxy
+    url: http://zipkin:9411
+    editable: true

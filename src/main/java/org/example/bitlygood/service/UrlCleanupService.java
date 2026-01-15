@@ -1,13 +1,15 @@
 package org.example.bitlygood.service;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDateTime;
+
 import org.example.bitlygood.repository.UrlRepository;
+import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * URL 정리 스케줄러 서비스
@@ -93,13 +95,17 @@ public class UrlCleanupService {
     public void monitorSystemHealth() {
         try {
             double hitRate = urlCacheService.getCacheHitRate();
-            log.info("Cache hit rate: {:.2f}%", hitRate * 100);
+            log.info("Cache hit rate: {}%", String.format("%.2f", hitRate * 100));
 
             // 캐시 히트율이 너무 낮으면 경고
             if (hitRate < 0.5) {
-                log.warn("Low cache hit rate detected: {:.2f}%", hitRate * 100);
+                log.warn("Low cache hit rate detected: {}%", String.format("%.2f", hitRate * 100));
             }
 
+        } catch (RedisConnectionFailureException e) {
+            // Redis 연결 실패 시 경고만 (애플리케이션은 계속 동작)
+            log.warn("Redis connection failed during health check. Cache monitoring skipped. " +
+                    "This may indicate Redis service is not available or network issue.", e);
         } catch (Exception e) {
             log.error("Error monitoring system health", e);
         }

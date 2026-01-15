@@ -1,15 +1,16 @@
 package org.example.bitlygood.service;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.example.bitlygood.domain.Url;
+import java.time.Duration;
+import java.util.Optional;
+
 import org.example.bitlygood.repository.UrlRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
-import java.util.Optional;
+import io.micrometer.observation.annotation.Observed;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * URL 캐시 서비스
@@ -26,6 +27,7 @@ import java.util.Optional;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Observed(name = "url.cache", contextualName = "url-cache-service")
 public class UrlCacheService {
 
     private final RedisTemplate<String, String> redisTemplate;
@@ -33,14 +35,10 @@ public class UrlCacheService {
 
     // 캐시 키 접두사
     private static final String URL_CACHE_PREFIX = "url:";
-    private static final String URL_METADATA_PREFIX = "url_meta:";
 
     // 캐시 TTL 설정 (application.properties에서 주입)
     @Value("${app.cache.url.ttl:3600}") // 기본 1시간
     private long urlCacheTtlSeconds;
-
-    @Value("${app.cache.url.metadata.ttl:86400}") // 기본 24시간
-    private long urlMetadataTtlSeconds;
 
     /**
      * 단축코드로 원본 URL을 조회합니다. (캐시 우선)
@@ -53,11 +51,13 @@ public class UrlCacheService {
      * @param shortCode 조회할 단축코드
      * @return 원본 URL (Optional)
      */
+    @Observed(name = "url.cache.getOriginalUrl", contextualName = "cache-get-url")
     public Optional<String> getOriginalUrl(String shortCode) {
         String cacheKey = URL_CACHE_PREFIX + shortCode;
 
         try {
             // 1단계: 캐시에서 조회
+            log.debug("Checking cache for short code: {}", shortCode);
             String cachedUrl = redisTemplate.opsForValue().get(cacheKey);
             if (cachedUrl != null) {
                 log.debug("Cache hit for short code: {}", shortCode);
@@ -69,23 +69,14 @@ public class UrlCacheService {
             log.debug("Cache miss for short code: {}", shortCode);
             incrementCacheMissCount();
 
-            Optional<Url> urlOpt = urlRepository.findByShortUrl(shortCode);
-            if (urlOpt.isPresent()) {
-                Url url = urlOpt.get();
-
-                // 만료 확인
-                if (url.isExpired()) {
-                    log.warn("URL has expired: {}", shortCode);
-                    return Optional.empty();
-                }
+            Optional<String> originalUrlOpt = urlRepository.findOriginalUrlByShortUrlNotExpired(shortCode);
+            if (originalUrlOpt.isPresent()) {
+                String originalUrl = originalUrlOpt.get();
 
                 // 3단계: 캐시에 저장
-                cacheUrl(shortCode, url.getOriginalUrl());
+                cacheUrl(shortCode, originalUrl);
 
-                // 메타데이터도 캐시에 저장
-                cacheUrlMetadata(shortCode, url);
-
-                return Optional.of(url.getOriginalUrl());
+                return Optional.of(originalUrl);
             }
 
             return Optional.empty();
@@ -93,9 +84,7 @@ public class UrlCacheService {
         } catch (Exception e) {
             log.error("Error retrieving URL from cache for short code: {}", shortCode, e);
             // 캐시 오류 시 데이터베이스에서 직접 조회
-            return urlRepository.findByShortUrl(shortCode)
-                    .filter(url -> !url.isExpired())
-                    .map(Url::getOriginalUrl);
+            return urlRepository.findOriginalUrlByShortUrlNotExpired(shortCode);
         }
     }
 
@@ -105,36 +94,23 @@ public class UrlCacheService {
      * @param shortCode   단축코드
      * @param originalUrl 원본 URL
      */
+    @Observed(name = "url.cache.cacheUrl", contextualName = "cache-set-url")
     public void cacheUrl(String shortCode, String originalUrl) {
+        log.debug("cacheUrl() called for shortCode: {}", shortCode);
         String cacheKey = URL_CACHE_PREFIX + shortCode;
 
-        try {
-            redisTemplate.opsForValue().set(cacheKey, originalUrl, Duration.ofSeconds(urlCacheTtlSeconds));
-            log.debug("URL cached: {} -> {}", shortCode, originalUrl);
-        } catch (Exception e) {
-            log.error("Error caching URL: {}", shortCode, e);
+        // TTL 값 검증
+        long ttlSeconds = urlCacheTtlSeconds;
+        if (ttlSeconds <= 0) {
+            log.warn("Invalid TTL value for cache: {} seconds. Using default value: 3600 seconds", ttlSeconds);
+            ttlSeconds = 3600;
         }
-    }
-
-    /**
-     * URL 메타데이터를 캐시에 저장합니다.
-     * 
-     * @param shortCode 단축코드
-     * @param url       URL 엔티티
-     */
-    private void cacheUrlMetadata(String shortCode, Url url) {
-        String metadataKey = URL_METADATA_PREFIX + shortCode;
 
         try {
-            // 메타데이터를 JSON 형태로 저장 (간단한 문자열로 구현)
-            String metadata = String.format("createdAt:%s,expirationDate:%s",
-                    url.getCreatedAt(),
-                    url.getExpirationDate());
-
-            redisTemplate.opsForValue().set(metadataKey, metadata, Duration.ofSeconds(urlMetadataTtlSeconds));
-            log.debug("URL metadata cached: {}", shortCode);
+            redisTemplate.opsForValue().set(cacheKey, originalUrl, Duration.ofSeconds(ttlSeconds));
         } catch (Exception e) {
-            log.error("Error caching URL metadata: {}", shortCode, e);
+            log.error("Error caching URL: {} (Exception type: {}, Message: {})",
+                    shortCode, e.getClass().getSimpleName(), e.getMessage(), e);
         }
     }
 
@@ -145,11 +121,9 @@ public class UrlCacheService {
      */
     public void evictUrl(String shortCode) {
         String cacheKey = URL_CACHE_PREFIX + shortCode;
-        String metadataKey = URL_METADATA_PREFIX + shortCode;
 
         try {
             redisTemplate.delete(cacheKey);
-            redisTemplate.delete(metadataKey);
             log.debug("URL evicted from cache: {}", shortCode);
         } catch (Exception e) {
             log.error("Error evicting URL from cache: {}", shortCode, e);

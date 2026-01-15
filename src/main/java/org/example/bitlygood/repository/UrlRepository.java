@@ -1,14 +1,14 @@
 package org.example.bitlygood.repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
 import org.example.bitlygood.domain.Url;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
 
 public interface UrlRepository extends JpaRepository<Url, Long> {
     Optional<Url> findByShortUrl(String shortUrl);
@@ -50,4 +50,14 @@ public interface UrlRepository extends JpaRepository<Url, Long> {
     @Query("SELECT COUNT(u) FROM Url u WHERE u.createdAt BETWEEN :startTime AND :endTime")
     long countByCreatedAtBetween(@Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime);
+
+    /**
+     * 단축코드로 원본 URL만 조회합니다. (최적화된 쿼리)
+     * 만료 체크도 DB 레벨에서 수행합니다.
+     * 
+     * @param shortUrl 단축코드
+     * @return 원본 URL (Optional)
+     */
+    @Query(value = "SELECT original_url FROM url WHERE short_url = :shortUrl AND (expiration_date IS NULL OR expiration_date > NOW())", nativeQuery = true)
+    Optional<String> findOriginalUrlByShortUrlNotExpired(@Param("shortUrl") String shortUrl);
 }

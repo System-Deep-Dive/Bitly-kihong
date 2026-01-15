@@ -1,7 +1,9 @@
 package org.example.bitlygood.service;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+
 import org.example.bitlygood.domain.Url;
 import org.example.bitlygood.dto.CreateUrlRequest;
 import org.example.bitlygood.dto.CreateUrlResponse;
@@ -10,9 +12,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
+import io.micrometer.observation.annotation.Observed;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * URL 단축 서비스
@@ -43,6 +45,7 @@ import java.time.format.DateTimeParseException;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Observed(name = "url.service", contextualName = "url-service")
 public class UrlService {
 
     // URL 데이터 저장소 (JPA Repository)
@@ -86,6 +89,7 @@ public class UrlService {
      * @param originalUrl 단축할 원본 URL (예: "https://www.example.com/very/long/path")
      * @return 생성된 단축 코드 (예: "1A2B3C")
      */
+    @Observed(name = "url.service.createShortUrl", contextualName = "create-short-url")
     @Transactional
     public String createShortUrl(String originalUrl) {
         if (originalUrl == null || originalUrl.isBlank()) {
@@ -121,6 +125,7 @@ public class UrlService {
      * @return 생성된 단축 URL 정보
      * @throws IllegalArgumentException 잘못된 요청 데이터인 경우
      */
+    @Observed(name = "url.service.createShortUrl", contextualName = "create-short-url-with-alias")
     @Transactional
     public CreateUrlResponse createShortUrl(CreateUrlRequest request) {
         // 입력값 검증
@@ -195,16 +200,26 @@ public class UrlService {
      * @return 해당하는 원본 URL (예: "https://www.example.com/very/long/path")
      * @throws IllegalArgumentException 단축 코드가 존재하지 않는 경우
      */
+    @Observed(name = "url.service.getOriginalUrl", contextualName = "get-original-url")
     public String getOriginalUrl(String shortCode) {
         log.debug("Retrieving original URL for short code: {}", shortCode);
 
         // 캐시 서비스를 통한 조회 (캐시 우선)
         return urlCacheService.getOriginalUrl(shortCode)
                 .orElseThrow(() -> {
-                    // 단축 코드가 존재하지 않는 경우 예외 발생
-                    log.warn("No original URL found for short code: {}", shortCode);
+                    // 단축 코드가 존재하지 않는 경우 예외 발생 (404는 정상적인 응답이므로 DEBUG 레벨)
+                    log.debug("No original URL found for short code: {}", shortCode);
                     return new IllegalArgumentException("Invalid short url");
                 });
+
+        // // Phase 1: 캐시 우회 - Repository 직접 호출
+        // return urlRepository.findByShortUrl(shortCode)
+        // .filter(url -> !url.isExpired())
+        // .map(Url::getOriginalUrl)
+        // .orElseThrow(() -> {
+        // log.warn("No original URL found for short code: {}", shortCode);
+        // return new IllegalArgumentException("Invalid short url");
+        // });
     }
 
     /**
